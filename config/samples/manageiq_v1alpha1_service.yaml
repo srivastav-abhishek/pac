@@ -9,4 +9,15 @@ metadata:
     app.kubernetes.io/created-by: pac
   name: service-sample
 spec:
-  # TODO(user): Add fields here
+  type: vm
+  virtualMachine:
+    name: mkumatag-pac-ws
+    ports:
+      - 22
+      - 443
+    cloudInstanceID: f652853b-c022-405e-9f11-e30259f930e7
+    zone: lon06
+    vpc:
+      ID: r018-339f44d6-5878-4c79-915c-0f7b8f910a33
+      region: eu-gb
+      loadbalancer: r018-5bc93b5c-5dc2-4197-a37a-5ebe00b11070
