@@ -61,6 +61,7 @@ type ConfigReconciler struct {
 // - https://pkg.go.dev/sigs.k8s.io/controller-runtime@v0.13.0/pkg/reconcile
 func (r *ConfigReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	l := log.FromContext(ctx)
+	l.V(4).Info("Reconciling Config")
 
 	config := &appv1alpha1.Config{}
 
@@ -90,6 +91,7 @@ func (r *ConfigReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 		return ctrl.Result{}, err
 	}
 
+	l.V(4).Info("Reconciling Complete")
 	return ctrl.Result{}, nil
 }
 
