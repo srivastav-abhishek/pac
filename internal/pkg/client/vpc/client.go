@@ -38,6 +38,10 @@ func (s *Client) ListLoadBalancerPools(options *vpcv1.ListLoadBalancerPoolsOptio
 	return s.vpcService.ListLoadBalancerPools(options)
 }
 
+func (s *Client) DeleteLoadBalancerPool(options *vpcv1.DeleteLoadBalancerPoolOptions) (*core.DetailedResponse, error) {
+	return s.vpcService.DeleteLoadBalancerPool(options)
+}
+
 // ListLoadBalancerPoolMembers returns members of a load balancer pool.
 func (s *Client) ListLoadBalancerPoolMembers(options *vpcv1.ListLoadBalancerPoolMembersOptions) (*vpcv1.LoadBalancerPoolMemberCollection, *core.DetailedResponse, error) {
 	return s.vpcService.ListLoadBalancerPoolMembers(options)
@@ -56,6 +60,10 @@ func (s *Client) CreateLoadBalancerListener(options *vpcv1.CreateLoadBalancerLis
 // CreateLoadBalancerPool creates the LoadBalancer Pool
 func (s *Client) CreateLoadBalancerPool(options *vpcv1.CreateLoadBalancerPoolOptions) (*vpcv1.LoadBalancerPool, *core.DetailedResponse, error) {
 	return s.vpcService.CreateLoadBalancerPool(options)
+}
+
+func (s *Client) DeleteLoadBalancerListener(options *vpcv1.DeleteLoadBalancerListenerOptions) (*core.DetailedResponse, error) {
+	return s.vpcService.DeleteLoadBalancerListener(options)
 }
 
 type Options struct {

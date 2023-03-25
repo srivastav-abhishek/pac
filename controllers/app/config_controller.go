@@ -91,7 +91,7 @@ func (r *ConfigReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 		return ctrl.Result{}, err
 	}
 
-	l.V(4).Info("Reconciling Complete")
+	l.Info("Reconcile completed")
 	return ctrl.Result{}, nil
 }
 
