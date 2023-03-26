@@ -161,8 +161,10 @@ func (r *ServiceReconciler) reconcileDelete(ctx context.Context, scope *ServiceS
 		}
 	}()
 
+	lbID := scope.Config.Spec.VPC.LoadBalancerID
+
 	lb, _, err := scope.VPCClient.GetLoadBalancer(&vpcv1.GetLoadBalancerOptions{
-		ID: &scope.Service.Spec.VirtualMachine.VPC.Loadbalancer,
+		ID: &lbID,
 	})
 	if err != nil {
 		return ctrl.Result{RequeueAfter: 30 * time.Second}, errors.Wrap(err, "failed to GetLoadBalancer ")
@@ -172,7 +174,7 @@ func (r *ServiceReconciler) reconcileDelete(ctx context.Context, scope *ServiceS
 	}
 
 	listeners, _, err := scope.VPCClient.ListLoadBalancerListeners(&vpcv1.ListLoadBalancerListenersOptions{
-		LoadBalancerID: &scope.Service.Spec.VirtualMachine.VPC.Loadbalancer,
+		LoadBalancerID: &lbID,
 	})
 	if err != nil {
 		return ctrl.Result{RequeueAfter: 30 * time.Second}, errors.Wrap(err, "failed to list LoadBalancerListeners ")
@@ -183,7 +185,7 @@ func (r *ServiceReconciler) reconcileDelete(ctx context.Context, scope *ServiceS
 			if *listener.DefaultPool.Name == pool {
 				// Delete the listener
 				if _, err := scope.VPCClient.DeleteLoadBalancerListener(&vpcv1.DeleteLoadBalancerListenerOptions{
-					LoadBalancerID: &scope.Service.Spec.VirtualMachine.VPC.Loadbalancer,
+					LoadBalancerID: &lbID,
 					ID:             listener.ID,
 				}); err != nil {
 					return ctrl.Result{RequeueAfter: 30 * time.Second}, errors.Wrapf(err, "failed to delete LoadBalancerListener for id: %s", *listener.ID)
@@ -193,7 +195,7 @@ func (r *ServiceReconciler) reconcileDelete(ctx context.Context, scope *ServiceS
 	}
 
 	pools, _, err := scope.VPCClient.ListLoadBalancerPools(&vpcv1.ListLoadBalancerPoolsOptions{
-		LoadBalancerID: &scope.Service.Spec.VirtualMachine.VPC.Loadbalancer,
+		LoadBalancerID: &lbID,
 	})
 	if err != nil {
 		return ctrl.Result{RequeueAfter: 30 * time.Second}, errors.Wrap(err, "failed to list LoadBalancerListeners ")
@@ -204,7 +206,7 @@ func (r *ServiceReconciler) reconcileDelete(ctx context.Context, scope *ServiceS
 			if *p.Name == pool {
 				// Delete the pool
 				if _, err := scope.VPCClient.DeleteLoadBalancerPool(&vpcv1.DeleteLoadBalancerPoolOptions{
-					LoadBalancerID: &scope.Service.Spec.VirtualMachine.VPC.Loadbalancer,
+					LoadBalancerID: &lbID,
 					ID:             p.ID,
 				}); err != nil {
 					return ctrl.Result{RequeueAfter: 30 * time.Second}, errors.Wrapf(err, "failed to delete LoadBalancerPool for id: %s", *p.ID)

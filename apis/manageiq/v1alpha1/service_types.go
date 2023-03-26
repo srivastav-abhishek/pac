@@ -119,13 +119,15 @@ type VirtualMachineStatus struct {
 type ServiceStatus struct {
 	// Ready is true when the service is ready.
 	// +optional
-	Ready bool `json:"ready"`
+	Ready bool `json:"ready,omitempty"`
 
 	// Retired will be true when service is retired
-	Retired bool `json:"retired"`
+	// +optional
+	Retired bool `json:"retired,omitempty"`
 
 	// Deleted will be true if service not found
-	Deleted bool `json:"deleted"`
+	// +optional
+	Deleted bool `json:"deleted,omitempty"`
 
 	// Conditions defines current service state of the service
 	// +optional

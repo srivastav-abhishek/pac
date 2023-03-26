@@ -90,11 +90,9 @@ func NewServiceScope(ctx context.Context, params ServiceScopeParams) (scope *Ser
 	}
 	scope.MIQClient = manageiq.NewClient(auth, manageiq.ClientParams{})
 
-	service := scope.Service
-
 	client, err := powervs.NewClient(ctx, powervs.Options{
-		CloudInstanceID: service.Spec.VirtualMachine.CloudInstanceID,
-		Zone:            service.Spec.VirtualMachine.Zone,
+		CloudInstanceID: config.Spec.PowerVS.CloudInstanceID,
+		Zone:            config.Spec.PowerVS.Zone,
 		Debug:           params.Debug})
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to create powervs client")
@@ -105,7 +103,7 @@ func NewServiceScope(ctx context.Context, params ServiceScopeParams) (scope *Ser
 		core.SetLoggingLevel(core.LevelDebug)
 	}
 
-	vpc, err := vpc.NewClient(ctx, vpc.Options{Region: service.Spec.VirtualMachine.VPC.Region})
+	vpc, err := vpc.NewClient(ctx, vpc.Options{Region: config.Spec.VPC.Region})
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to create vpc client")
 	}

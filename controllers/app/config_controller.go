@@ -20,11 +20,13 @@ import (
 	"context"
 	"fmt"
 	manageiqv1alpha1 "github.com/PDeXchange/pac/apis/manageiq/v1alpha1"
+	"github.com/pkg/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"net/url"
 
 	"github.com/ppc64le-cloud/manageiq-client-go"
 	corev1 "k8s.io/api/core/v1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
 	t "k8s.io/apimachinery/pkg/types"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -102,33 +104,44 @@ func (r *ConfigReconciler) reconcileServices(ctx context.Context, mq *manageiq.C
 		l.Error(err, "errored while listing the services")
 		return err
 	}
-	for _, service := range slist.Resources {
-		l.V(4).Info("service information", "ID", service.ID, "name", service.Name)
-		s, err := mq.GetService(service.ID, url.Values{"attributes": []string{"vms"}})
+	for _, resource := range slist.Resources {
+		l.V(4).Info("resource information", "ID", resource.ID, "name", resource.Name)
+		s, err := mq.GetService(resource.ID, url.Values{"attributes": []string{"vms"}})
 		if err != nil {
 			l.Error(err, "errored while fetching the services")
 			return err
 		}
 		if s.Retired {
-			l.V(3).Info("service retire, hence skipping", "name", s.Name)
+			l.V(3).Info("retired resource, hence deleting", "name", s.Name)
+			ss := &manageiqv1alpha1.Service{}
+
+			if err := r.Get(ctx, t.NamespacedName{Namespace: req.Namespace, Name: s.Name}, ss); client.IgnoreNotFound(err) != nil {
+				l.Error(err, "unable to fetch resource")
+				return err
+			} else if apierrors.IsNotFound(err) {
+				continue
+			}
+			if err := r.Delete(ctx, ss); err != nil {
+				return errors.Wrapf(err, "failed to delete resource: %s", ss.Name)
+			}
 			continue
 		}
-		//spew.Dump(s)
-		constructService := func() (*manageiqv1alpha1.Service, error) {
-			service := &manageiqv1alpha1.Service{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      s.Name,
-					Namespace: req.Namespace,
-				},
-				Spec: manageiqv1alpha1.ServiceSpec{
-					ID:        s.ID,
-					CreatedAt: s.CreatedAt,
-					Type:      manageiqv1alpha1.ServiceTypeVM,
-				},
-			}
 
+		ss := &manageiqv1alpha1.Service{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      s.Name,
+				Namespace: req.Namespace,
+			},
+		}
+
+		if _, err := ctrl.CreateOrUpdate(ctx, r.Client, ss, func() error {
+			ss.Spec = manageiqv1alpha1.ServiceSpec{
+				ID:        s.ID,
+				CreatedAt: s.CreatedAt,
+				Type:      manageiqv1alpha1.ServiceTypeVM,
+			}
 			if len(s.VMs) >= 1 {
-				service.Spec.VirtualMachine = &manageiqv1alpha1.VirtualMachine{
+				ss.Spec.VirtualMachine = &manageiqv1alpha1.VirtualMachine{
 					Name: s.VMs[0].Name,
 					ID:   s.VMs[0].UIDEMS,
 					Ports: []manageiqv1alpha1.Port{
@@ -146,19 +159,9 @@ func (r *ConfigReconciler) reconcileServices(ctx context.Context, mq *manageiq.C
 					},
 				}
 			}
-			if err := ctrl.SetControllerReference(config, service, r.Scheme); err != nil {
-				return nil, err
+			if err := ctrl.SetControllerReference(config, ss, r.Scheme); err != nil {
+				return err
 			}
-			return service, nil
-		}
-
-		ss, err := constructService()
-		if err != nil {
-			l.Error(err, "unable to construct k8s service")
-			return err
-		}
-
-		if _, err := ctrl.CreateOrUpdate(ctx, r.Client, ss, func() error {
 			return nil
 		}); err != nil {
 			l.Error(err, "unable to create Service", "service", ss)
