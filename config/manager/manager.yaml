@@ -89,8 +89,8 @@ spec:
         args:
           - "--manager-type=service"
           - "--leader-elect"
-          - "--health-probe-bind-address=:8081"
-          - "--metrics-bind-address=127.0.0.1:8080"
+          - "--health-probe-bind-address=:8082"
+          - "--metrics-bind-address=127.0.0.1:8083"
           - "--leader-elect"
           - "--zap-time-encoding=iso8601"
           - "--sync-period=10m"
@@ -111,13 +111,13 @@ spec:
         livenessProbe:
           httpGet:
             path: /healthz
-            port: 8081
+            port: 8082
           initialDelaySeconds: 15
           periodSeconds: 20
         readinessProbe:
           httpGet:
             path: /readyz
-            port: 8081
+            port: 8082
           initialDelaySeconds: 5
           periodSeconds: 10
         # TODO(user): Configure the resources accordingly based on the project requirements.
