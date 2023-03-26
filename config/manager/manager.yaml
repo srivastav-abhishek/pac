@@ -48,7 +48,7 @@ spec:
         - "--metrics-bind-address=127.0.0.1:8080"
         - "--leader-elect"
         - "--zap-time-encoding=iso8601"
-        - "--sync-period=10m"
+        - "--sync-period=2m"
         image: controller:latest
         imagePullPolicy: Always
         name: manager-config
