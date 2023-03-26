@@ -18,6 +18,7 @@ package main
 
 import (
 	"flag"
+	"fmt"
 	"os"
 	"time"
 
@@ -43,7 +44,8 @@ var (
 	scheme   = runtime.NewScheme()
 	setupLog = ctrl.Log.WithName("setup")
 
-	syncPeriod time.Duration
+	syncPeriod  time.Duration
+	managerType string
 )
 
 func init() {
@@ -68,6 +70,8 @@ func main() {
 		"Sync period for the controller.")
 	flag.BoolVar(&debug, "debug", false,
 		"Enable API Debug logs.")
+	flag.StringVar(&managerType, "manager-type", "both",
+		"Manager type want to run, options:[both, config, service]")
 	opts := zap.Options{
 		Development: true,
 	}
@@ -76,13 +80,18 @@ func main() {
 
 	ctrl.SetLogger(zap.New(zap.UseFlagOptions(&opts)))
 
+	if managerType != "both" && managerType != "config" && managerType != "service" {
+		setupLog.Error(fmt.Errorf("invalid manager type"), "", "manager-type", managerType)
+		os.Exit(1)
+	}
+
 	mgr, err := ctrl.NewManager(ctrl.GetConfigOrDie(), ctrl.Options{
 		Scheme:                 scheme,
 		MetricsBindAddress:     metricsAddr,
 		Port:                   9443,
 		HealthProbeBindAddress: probeAddr,
 		LeaderElection:         enableLeaderElection,
-		LeaderElectionID:       "4b314668.pac.io",
+		LeaderElectionID:       fmt.Sprintf("%s-4b314668.pac.io", managerType),
 		SyncPeriod:             &syncPeriod,
 		// LeaderElectionReleaseOnCancel defines if the leader should step down voluntarily
 		// when the Manager ends. This requires the binary to immediately end when the
@@ -101,21 +110,26 @@ func main() {
 		os.Exit(1)
 	}
 
-	if err = (&controllers.ConfigReconciler{
-		Client: mgr.GetClient(),
-		Scheme: mgr.GetScheme(),
-		Debug:  debug,
-	}).SetupWithManager(mgr); err != nil {
-		setupLog.Error(err, "unable to create controller", "controller", "Config")
-		os.Exit(1)
+	if managerType == "both" || managerType == "config" {
+		if err = (&controllers.ConfigReconciler{
+			Client: mgr.GetClient(),
+			Scheme: mgr.GetScheme(),
+			Debug:  debug,
+		}).SetupWithManager(mgr); err != nil {
+			setupLog.Error(err, "unable to create controller", "controller", "Config")
+			os.Exit(1)
+		}
 	}
-	if err = (&manageiqcontrollers.ServiceReconciler{
-		Client: mgr.GetClient(),
-		Scheme: mgr.GetScheme(),
-		Debug:  debug,
-	}).SetupWithManager(mgr); err != nil {
-		setupLog.Error(err, "unable to create controller", "controller", "Service")
-		os.Exit(1)
+
+	if managerType == "both" || managerType == "service" {
+		if err = (&manageiqcontrollers.ServiceReconciler{
+			Client: mgr.GetClient(),
+			Scheme: mgr.GetScheme(),
+			Debug:  debug,
+		}).SetupWithManager(mgr); err != nil {
+			setupLog.Error(err, "unable to create controller", "controller", "Service")
+			os.Exit(1)
+		}
 	}
 	//+kubebuilder:scaffold:builder
 

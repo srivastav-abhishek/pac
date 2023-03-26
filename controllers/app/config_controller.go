@@ -178,7 +178,7 @@ func (r *ConfigReconciler) reconcileSecret(ctx context.Context, req ctrl.Request
 
 	secret := &corev1.Secret{}
 	if err := r.Get(ctx, t.NamespacedName{Namespace: req.Namespace, Name: config.Spec.CredentialSecret.Name}, secret); err != nil {
-		l.Error(err, "unable to fetch secret: %s", config.Spec.CredentialSecret.Name)
+		l.Error(err, "unable to fetch secret", "secret", config.Spec.CredentialSecret.Name)
 		return nil, err
 	}
 

@@ -42,16 +42,67 @@ spec:
       - command:
         - /manager
         args:
-        - --leader-elect
+        - "--manager-type=config"
+        - "--leader-elect"
+        - "--health-probe-bind-address=:8081"
+        - "--metrics-bind-address=127.0.0.1:8080"
+        - "--leader-elect"
+        - "--zap-time-encoding=iso8601"
+        - "--sync-period=10m"
         image: controller:latest
         imagePullPolicy: Always
-        name: manager
+        name: manager-config
+#        env:
+#        - name: IBMCLOUD_APIKEY
+#          valueFrom:
+#            secretKeyRef:
+#              name: ibm-credential
+#              key: IBMCLOUD_APIKEY
+        securityContext:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+              - "ALL"
+        livenessProbe:
+          httpGet:
+            path: /healthz
+            port: 8081
+          initialDelaySeconds: 15
+          periodSeconds: 20
+        readinessProbe:
+          httpGet:
+            path: /readyz
+            port: 8081
+          initialDelaySeconds: 5
+          periodSeconds: 10
+        # TODO(user): Configure the resources accordingly based on the project requirements.
+        # More info: https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/
+        resources:
+          limits:
+            cpu: 500m
+            memory: 128Mi
+          requests:
+            cpu: 10m
+            memory: 64Mi
+      - command:
+          - /manager
+        args:
+          - "--manager-type=service"
+          - "--leader-elect"
+          - "--health-probe-bind-address=:8081"
+          - "--metrics-bind-address=127.0.0.1:8080"
+          - "--leader-elect"
+          - "--zap-time-encoding=iso8601"
+          - "--sync-period=10m"
+        image: controller:latest
+        imagePullPolicy: Always
+        name: manager-service
         env:
-        - name: IBMCLOUD_APIKEY
-          valueFrom:
-            secretKeyRef:
-              name: ibm-credential
-              key: IBMCLOUD_APIKEY
+          - name: IBMCLOUD_APIKEY
+            valueFrom:
+              secretKeyRef:
+                name: ibm-credential
+                key: IBMCLOUD_APIKEY
         securityContext:
           allowPrivilegeEscalation: false
           capabilities:
