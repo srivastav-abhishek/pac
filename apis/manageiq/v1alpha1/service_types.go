@@ -146,11 +146,8 @@ func (s *ServiceStatus) SetVirtualMachineStatusInstanceID(in *models.PVMInstance
 }
 
 func (s *ServiceStatus) SetVirtualMachineStatusMACAddress(in *models.PVMInstanceReference) {
+	// Loops through the networks and set the mac address and network name for the first network
 	for _, nw := range in.Networks {
-		// skipping fixed ip addresses which are public networks in nature
-		if nw.Type == "fixed" {
-			continue
-		}
 		// skip the networks which doesn't have mac address set
 		if nw.MacAddress == "" {
 			continue
@@ -158,7 +155,7 @@ func (s *ServiceStatus) SetVirtualMachineStatusMACAddress(in *models.PVMInstance
 
 		s.VirtualMachine.MACAddress = nw.MacAddress
 		s.VirtualMachine.Network = nw.NetworkName
-
+		return
 	}
 }
 

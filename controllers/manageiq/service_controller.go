@@ -233,13 +233,12 @@ func (r *ServiceReconciler) reconcileVM(ctx context.Context, scope *ServiceScope
 		return err
 	}
 
-	// This will update the status with the right mac address
-	if err := reconcileNetwork(scope); err != nil {
+	if err := reconcileInstance(scope); err != nil {
 		return err
 	}
 
-	// reconcileIPAddress reconcile the IP addresses from the dhcp server's leases and assign to status
-	if err := reconcileIPAddress(scope); err != nil {
+	// This will update the status with the right mac address
+	if err := reconcileNetwork(scope); err != nil {
 		return err
 	}
 
@@ -248,6 +247,35 @@ func (r *ServiceReconciler) reconcileVM(ctx context.Context, scope *ServiceScope
 	}
 
 	scope.Service.Status.SetReady()
+
+	return nil
+}
+
+// reconcileInstance will reconcile the instance for the service
+func reconcileInstance(scope *ServiceScope) error {
+	l := scope.Logger
+	l.V(4).Info("in the reconcileNetwork")
+
+	in, err := func() (*models.PVMInstanceReference, error) {
+		ins, err := scope.PowerVSClient.GetAllInstance()
+		if err != nil {
+			l.Error(err, "failed to GetAllInstance")
+			return nil, err
+		}
+		for _, in := range ins.PvmInstances {
+			if scope.Service.Spec.VirtualMachine.Name == *in.ServerName {
+				l.V(3).Info("found the vm!", "instance", in)
+				return in, nil
+			}
+		}
+		return nil, fmt.Errorf("vm not found")
+	}()
+
+	if err != nil {
+		return err
+	}
+
+	scope.Service.Status.SetVirtualMachineStatusInstanceID(in)
 
 	return nil
 }
@@ -529,27 +557,60 @@ func reconcileNetwork(scope *ServiceScope) error {
 	l := scope.Logger
 	l.V(4).Info("in the reconcileNetwork")
 
-	in, err := func() (*models.PVMInstanceReference, error) {
-		ins, err := scope.PowerVSClient.GetAllInstance()
-		if err != nil {
-			l.Error(err, "failed to GetAllInstance")
-			return nil, err
-		}
-		for _, in := range ins.PvmInstances {
-			if scope.Service.Spec.VirtualMachine.Name == *in.ServerName {
-				l.V(3).Info("found the vm!", "instance", in)
-				return in, nil
-			}
-		}
-		return nil, fmt.Errorf("vm not found")
-	}()
+	virtualMachineStatus := &scope.Service.Status.VirtualMachine
 
+	if virtualMachineStatus.InstanceID == "" {
+		l.Error(fmt.Errorf("instance id is not yet available"), "retry after sometime")
+		return fmt.Errorf("instance id is not yet available")
+	}
+
+	in, err := scope.PowerVSClient.GetInstance(virtualMachineStatus.InstanceID)
 	if err != nil {
 		return err
 	}
+	// Fetch the network information from the networks attached to the instance and set it in the status
+	for _, network := range in.Networks {
+		if network.MacAddress == "" {
+			return fmt.Errorf("mac address is not yet available")
+		}
+		if network.Type == "fixed" {
+			if network.IPAddress == "" {
+				l.Error(fmt.Errorf("ip address is not yet available"), "retry after sometime")
+				return fmt.Errorf("ip address is not yet available")
+			}
+			virtualMachineStatus.MACAddress = network.MacAddress
+			virtualMachineStatus.Network = network.NetworkName
+			virtualMachineStatus.IPAddress = network.IPAddress
+			return nil
+		} else if network.Type == "dynamic" {
+			virtualMachineStatus.MACAddress = network.MacAddress
+			virtualMachineStatus.Network = network.NetworkName
+			dhcpservers, err := scope.PowerVSClient.GetAllDHCPServers()
+			if err != nil {
+				return fmt.Errorf("failed to get all dhcp servers: %w", err)
+			}
 
-	scope.Service.Status.SetVirtualMachineStatusInstanceID(in)
-	scope.Service.Status.SetVirtualMachineStatusMACAddress(in)
+			if err := func() error {
+				for _, dhcpserver := range dhcpservers {
+					if *dhcpserver.Network.Name == virtualMachineStatus.Network {
+						s, err := scope.PowerVSClient.GetDHCPServer(*dhcpserver.ID)
+						if err != nil {
+							return err
+						}
+						for _, lease := range s.Leases {
+							if *lease.InstanceMacAddress == virtualMachineStatus.MACAddress && *lease.InstanceIP != "" {
+								virtualMachineStatus.IPAddress = *lease.InstanceIP
+								return nil
+							}
+						}
+					}
+				}
+				return fmt.Errorf("no lease found for the assigned mac address")
+			}(); err != nil {
+				return err
+			}
+		}
+	}
 
 	return nil
 }

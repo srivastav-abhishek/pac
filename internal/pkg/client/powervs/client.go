@@ -32,6 +32,10 @@ func (s *Client) GetDHCPServer(id string) (*models.DHCPServerDetail, error) {
 	return s.dhcpClient.Get(id)
 }
 
+func (s *Client) GetInstance(id string) (*models.PVMInstance, error) {
+	return s.instanceClient.Get(id)
+}
+
 type Options struct {
 	CloudInstanceID string
 	Zone            string
