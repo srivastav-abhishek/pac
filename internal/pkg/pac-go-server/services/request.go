@@ -97,7 +97,8 @@ func NewRequest(c *gin.Context) {
 		CreatedAt:     time.Now(),
 		State:         models.RequestStateNew,
 		Justification: request.Justification,
-		GroupAdmission: models.GroupAdmission{
+		RequestType:   models.RequestAddToGroup,
+		GroupAdmission: &models.GroupAdmission{
 			GroupID:   groupID,
 			Group:     grp.Name,
 			Requester: username,
