@@ -24,8 +24,8 @@ type Request struct {
 	CreatedAt      time.Time          `json:"created_at" bson:"created_at,omitempty"`
 	State          RequestStateType   `json:"state" bson:"state,omitempty"`
 	RequestType    RequestType        `json:"type" bson:"type,omitempty"`
-	GroupAdmission GroupAdmission     `json:"group" bson:"group,omitempty"`
-	ServiceExpiry  ServiceExpiry      `json:"service" bson:"service,omitempty"`
+	GroupAdmission *GroupAdmission    `json:"group,omitempty" bson:"group,omitempty"`
+	ServiceExpiry  *ServiceExpiry     `json:"service,omitempty" bson:"service,omitempty"`
 }
 
 type ServiceExpiry struct {
