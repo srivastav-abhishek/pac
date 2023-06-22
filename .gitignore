@@ -16,3 +16,11 @@
 
 # Directory for binaries like kustomize
 bin/
+
+# editor and IDE paraphernalia
+.idea
+*.swp
+*.swo
+*~
+.vscode
+.envrc

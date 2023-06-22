@@ -7,6 +7,20 @@ metadata:
     app.kubernetes.io/part-of: pac
     app.kuberentes.io/managed-by: kustomize
     app.kubernetes.io/created-by: pac
-  name: catalog-sample
+  name: medium-vm
 spec:
-  # TODO(user): Add fields here
+  type: VM
+  capacity:
+    cpu: '0.5'
+    memory: 8
+  description: 'Medium size vm'
+  expiry: 20
+  vm:
+    crn: 'crn:v1:bluemix:public:power-iaas:lon06:a/<accountID>:<powerVSInstanceID>::'
+    image: <sampleImageName>
+    network: <sampleNetworkName>
+    processor_type: shared
+    system_type: s922
+    capacity:
+      cpu: '0.5'
+      memory: 8

@@ -7,6 +7,7 @@ import (
 	"github.com/IBM-Cloud/power-go-client/power/models"
 	"github.com/PDeXchange/pac/internal/pkg/client/iam"
 	"github.com/PDeXchange/pac/internal/pkg/client/utils"
+	"github.com/pkg/errors"
 )
 
 var _ PowerVS = &Client{}
@@ -15,6 +16,7 @@ type Client struct {
 	instanceClient *instance.IBMPIInstanceClient
 	networkClient  *instance.IBMPINetworkClient
 	dhcpClient     *instance.IBMPIDhcpClient
+	imageClient    *instance.IBMPIImageClient
 }
 
 // GetAllInstance returns all the virtual machine in the Power VS service instance.
@@ -36,7 +38,40 @@ func (s *Client) GetInstance(id string) (*models.PVMInstance, error) {
 	return s.instanceClient.Get(id)
 }
 
+// GetImageByName returns *models.ImageReference for given image name if exists, if not will return appropriate error
+func (s *Client) GetImageByName(name string) (*models.ImageReference, error) {
+	images, err := s.imageClient.GetAll()
+	if err != nil {
+		return nil, errors.Wrap(err, "error retrieving images")
+	}
+
+	for _, image := range images.Images {
+		if *image.Name == name {
+			return image, nil
+		}
+	}
+
+	return nil, errors.Errorf("error retrieving image by name %s", name)
+}
+
+// GetNetworkByName returns *models.NetworkReference for given network name if exists, if not will return appropriate error
+func (s *Client) GetNetworkByName(name string) (*models.NetworkReference, error) {
+	networks, err := s.networkClient.GetAll()
+	if err != nil {
+		return nil, errors.Wrap(err, "error retrieving networks")
+	}
+
+	for _, network := range networks.Networks {
+		if *network.Name == name {
+			return network, nil
+		}
+	}
+
+	return nil, errors.Errorf("error retrieving network by name %s", name)
+}
+
 type Options struct {
+	AccountID       string
 	CloudInstanceID string
 	Zone            string
 	Debug           bool
@@ -48,14 +83,19 @@ func NewClient(ctx context.Context, options Options) (*Client, error) {
 		return nil, err
 	}
 
-	account, err := utils.GetAccountID(ctx, auth)
-	if err != nil {
-		return nil, err
+	var accountID string
+	if options.AccountID == "" {
+		accountID, err = utils.GetAccountID(ctx, auth)
+		if err != nil {
+			return nil, err
+		}
+	} else {
+		accountID = options.AccountID
 	}
 
 	opt := &ibmpisession.IBMPIOptions{
 		Authenticator: auth,
-		UserAccount:   account,
+		UserAccount:   accountID,
 		Zone:          options.Zone,
 		Debug:         options.Debug,
 	}
@@ -68,5 +108,6 @@ func NewClient(ctx context.Context, options Options) (*Client, error) {
 		instanceClient: instance.NewIBMPIInstanceClient(ctx, session, options.CloudInstanceID),
 		networkClient:  instance.NewIBMPINetworkClient(ctx, session, options.CloudInstanceID),
 		dhcpClient:     instance.NewIBMPIDhcpClient(ctx, session, options.CloudInstanceID),
+		imageClient:    instance.NewIBMPIImageClient(ctx, session, options.CloudInstanceID),
 	}, nil
 }

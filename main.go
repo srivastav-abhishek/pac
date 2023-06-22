@@ -36,8 +36,6 @@ import (
 	appv1alpha1 "github.com/PDeXchange/pac/apis/app/v1alpha1"
 	manageiqv1alpha1 "github.com/PDeXchange/pac/apis/manageiq/v1alpha1"
 	appcontrollers "github.com/PDeXchange/pac/controllers/app"
-	controllers "github.com/PDeXchange/pac/controllers/app"
-	manageiqcontrollers "github.com/PDeXchange/pac/controllers/manageiq"
 	//+kubebuilder:scaffold:imports
 )
 
@@ -111,30 +109,35 @@ func main() {
 		os.Exit(1)
 	}
 
-	if managerType == "both" || managerType == "config" {
-		if err = (&controllers.ConfigReconciler{
-			Client: mgr.GetClient(),
-			Scheme: mgr.GetScheme(),
-			Debug:  debug,
-		}).SetupWithManager(mgr); err != nil {
-			setupLog.Error(err, "unable to create controller", "controller", "Config")
-			os.Exit(1)
+	// TODO: need to make this run side by side with app controllers
+	/*
+		if managerType == "both" || managerType == "config" {
+			if err = (&controllers.ConfigReconciler{
+				Client: mgr.GetClient(),
+				Scheme: mgr.GetScheme(),
+				Debug:  debug,
+			}).SetupWithManager(mgr); err != nil {
+				setupLog.Error(err, "unable to create controller", "controller", "Config")
+				os.Exit(1)
+			}
 		}
-	}
 
-	if managerType == "both" || managerType == "service" {
-		if err = (&manageiqcontrollers.ServiceReconciler{
-			Client: mgr.GetClient(),
-			Scheme: mgr.GetScheme(),
-			Debug:  debug,
-		}).SetupWithManager(mgr); err != nil {
-			setupLog.Error(err, "unable to create controller", "controller", "Service")
-			os.Exit(1)
+		if managerType == "both" || managerType == "service" {
+			if err = (&manageiqcontrollers.ServiceReconciler{
+				Client: mgr.GetClient(),
+				Scheme: mgr.GetScheme(),
+				Debug:  debug,
+			}).SetupWithManager(mgr); err != nil {
+				setupLog.Error(err, "unable to create controller", "controller", "Service")
+				os.Exit(1)
+			}
 		}
-	}
+	*/
+
 	if err = (&appcontrollers.CatalogReconciler{
 		Client: mgr.GetClient(),
 		Scheme: mgr.GetScheme(),
+		Debug:  debug,
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "Catalog")
 		os.Exit(1)
@@ -142,6 +145,7 @@ func main() {
 	if err = (&appcontrollers.ServiceReconciler{
 		Client: mgr.GetClient(),
 		Scheme: mgr.GetScheme(),
+		Debug:  debug,
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "Service")
 		os.Exit(1)

@@ -31,6 +31,7 @@ import (
 type ServiceReconciler struct {
 	client.Client
 	Scheme *runtime.Scheme
+	Debug  bool
 }
 
 //+kubebuilder:rbac:groups=app.pac.io,resources=services,verbs=get;list;watch;create;update;patch;delete

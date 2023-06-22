@@ -18,7 +18,6 @@ package v1alpha1
 
 import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/util/intstr"
 )
 
 // CatalogTypeVM is VM catalog type
@@ -29,8 +28,8 @@ const CatalogTypeVM CatalogType = "VM"
 type CatalogType string
 
 type Capacity struct {
-	CPU    intstr.IntOrString `json:"cpu"`
-	Memory int                `json:"memory"`
+	CPU    string `json:"cpu"`
+	Memory int    `json:"memory"`
 }
 
 // CatalogSpec defines the desired state of Catalog
@@ -49,7 +48,7 @@ type CatalogSpec struct {
 
 // CatalogStatus defines the observed state of Catalog
 type CatalogStatus struct {
-	Ready   bool   `json:"ready,omitempty"`
+	Ready   bool   `json:"ready"`
 	Message string `json:"message,omitempty"`
 }
 
@@ -64,6 +63,8 @@ type VMCatalog struct {
 	Image string `json:"image"`
 	// +optional
 	Network string `json:"network"`
+	// +optional
+	Capacity Capacity `json:"capacity"`
 }
 
 //+kubebuilder:object:root=true

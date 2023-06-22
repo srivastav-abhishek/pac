@@ -9,7 +9,6 @@ import (
 	"go.uber.org/zap"
 
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/util/intstr"
 
 	pac "github.com/PDeXchange/pac/apis/app/v1alpha1"
 	log "github.com/PDeXchange/pac/internal/pkg/pac-go-server/logger"
@@ -116,7 +115,7 @@ func convertToCatalog(catalogItem pac.Catalog) models.Catalog {
 			Network:       catalogItem.Spec.VM.Network,
 		}
 	}
-	cpu, _ := utils.GetFloatValue(catalogItem.Spec.Capacity.CPU)
+	cpu, _ := utils.CastStrToFloat(catalogItem.Spec.Capacity.CPU)
 	catalog.Capacity.CPU = cpu
 	return catalog
 }
@@ -179,7 +178,7 @@ func createCatalogObject(catalog models.Catalog) pac.Catalog {
 			Type:        pac.CatalogType(catalog.Type),
 			Description: catalog.Description,
 			Capacity: pac.Capacity{
-				CPU:    intstr.FromString(fmt.Sprintf("%v", catalog.Capacity.CPU)),
+				CPU:    utils.CastFloatToStr(catalog.Capacity.CPU),
 				Memory: catalog.Capacity.Memory,
 			},
 			Expiry: catalog.Expiry,

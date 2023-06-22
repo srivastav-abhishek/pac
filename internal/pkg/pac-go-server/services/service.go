@@ -317,7 +317,7 @@ func usedCapacity(userId string) (models.Capacity, error) {
 		if err != nil {
 			return consumedCapacity, fmt.Errorf("failed to get catalog, name %s %v", catalogName, err)
 		}
-		cpu, err := utils.GetFloatValue(catalog.Spec.Capacity.CPU)
+		cpu, err := utils.CastStrToFloat(catalog.Spec.Capacity.CPU)
 		if err != nil {
 			return consumedCapacity, err
 		}
@@ -330,7 +330,7 @@ func usedCapacity(userId string) (models.Capacity, error) {
 //TODO: Move to utils if needed
 
 func AddCapacity(capacity models.Capacity, catalogCapacity pac.Capacity) (models.Capacity, error) {
-	cpu, err := utils.GetFloatValue(catalogCapacity.CPU)
+	cpu, err := utils.CastStrToFloat(catalogCapacity.CPU)
 	if err != nil {
 		return models.Capacity{}, err
 	}

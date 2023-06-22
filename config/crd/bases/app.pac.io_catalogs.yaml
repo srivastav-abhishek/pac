@@ -38,10 +38,7 @@ spec:
               capacity:
                 properties:
                   cpu:
-                    anyOf:
-                    - type: integer
-                    - type: string
-                    x-kubernetes-int-or-string: true
+                    type: string
                   memory:
                     type: integer
                 required:
@@ -59,6 +56,16 @@ spec:
                 type: string
               vm:
                 properties:
+                  capacity:
+                    properties:
+                      cpu:
+                        type: string
+                      memory:
+                        type: integer
+                    required:
+                    - cpu
+                    - memory
+                    type: object
                   crn:
                     type: string
                   image:
@@ -88,6 +95,8 @@ spec:
                 type: string
               ready:
                 type: boolean
+            required:
+            - ready
             type: object
         type: object
     served: true
