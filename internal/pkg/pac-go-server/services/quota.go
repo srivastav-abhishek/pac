@@ -212,7 +212,7 @@ func GetUserQuota(c *gin.Context) {
 	}
 	availableQuota.CPU = userQuota.CPU - usedQuota.CPU
 	availableQuota.Memory = userQuota.Memory - usedQuota.Memory
-	
+
 	// in case of negative available quota set it to 0
 	if availableQuota.CPU < 0 {
 		availableQuota.CPU = 0
