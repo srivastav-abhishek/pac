@@ -17,17 +17,21 @@ limitations under the License.
 package v1alpha1
 
 import (
+	"fmt"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 // ServiceState is state of catalog
-// +kubebuilder:validation:Enum=NEW;IN_PROGRESS;CREATED;FAILED;EXPIRED
+// +kubebuilder:validation:Enum=NEW;IN_PROGRESS;CREATED;ERROR;FAILED;EXPIRED
 type ServiceState string
+
+const ServiceFinalizer = "services.pac.io/finalizer"
 
 const (
 	ServiceStateNew        ServiceState = "NEW"
 	ServiceStateInProgress ServiceState = "IN_PROGRESS"
+	ServiceStateError      ServiceState = "ERROR"
 	ServiceStateCreated    ServiceState = "CREATED"
 	ServiceStateFailed     ServiceState = "FAILED"
 	ServiceStateExpired    ServiceState = "EXPIRED"
@@ -38,6 +42,10 @@ type VM struct {
 	InstanceID string `json:"instance_id,omitempty"`
 	IPAddress  string `json:"ip_address,omitempty"`
 	State      string `json:"state,omitempty"`
+}
+
+var VMAccessInfoTemplate = func(ip string) string {
+	return fmt.Sprintf("VM can be accessed via IP %s, use any SSH pub key registered to SSH into the VM", ip)
 }
 
 // ServiceSpec defines the desired state of Service

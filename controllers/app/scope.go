@@ -31,23 +31,31 @@ import (
 	"github.com/PDeXchange/pac/internal/pkg/client/powervs"
 )
 
-type CatalogScopeParams struct {
+const (
+	catalogController = "catalog"
+	serviceController = "service"
+)
+
+type ControllerScopeParams struct {
 	Logger  logr.Logger
 	Client  client.Client
+	Type    string
 	Catalog *v1alpha1.Catalog
+	Service *v1alpha1.Service
 	Debug   bool
 }
 
-type CatalogScope struct {
+type ControllerScope struct {
 	logr.Logger
 	Client         client.Client
 	Catalog        *v1alpha1.Catalog
+	Service        *v1alpha1.Service
 	PowerVSClient  *powervs.Client
 	PlatformClient *platform.Client
 }
 
-func NewCatalogScope(ctx context.Context, params CatalogScopeParams) (scope *CatalogScope, err error) {
-	scope = &CatalogScope{}
+func NewControllerScope(ctx context.Context, params ControllerScopeParams) (scope *ControllerScope, err error) {
+	scope = &ControllerScope{}
 
 	if params.Client == nil {
 		err = errors.New("client is required when creating a CatalogScope")
@@ -61,10 +69,18 @@ func NewCatalogScope(ctx context.Context, params CatalogScopeParams) (scope *Cat
 	scope.Logger = params.Logger
 
 	if params.Catalog == nil {
-		err = errors.New("catalog is required when creating a CatalogScope")
+		err = errors.New("catalog is required when creating a scope for catalog and service controller")
 		return
 	}
 	scope.Catalog = params.Catalog
+
+	if params.Type == serviceController {
+		if params.Service == nil {
+			err = errors.New("service is required when creating a scope for service controller")
+			return
+		}
+		scope.Service = params.Service
+	}
 
 	platformClient, err := platform.NewClient()
 	if err != nil {

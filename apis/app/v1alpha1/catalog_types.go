@@ -23,6 +23,9 @@ import (
 // CatalogTypeVM is VM catalog type
 const CatalogTypeVM CatalogType = "VM"
 
+// CatalogFinalizer is Catalog's finalizer
+const CatalogFinalizer = "catalogs.pac.io/finalizer"
+
 // CatalogType is type of catalog
 // +kubebuilder:validation:Enum="VM"
 type CatalogType string

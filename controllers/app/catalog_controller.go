@@ -19,11 +19,19 @@ package controllers
 import (
 	"context"
 	"fmt"
+	"time"
+
 	"github.com/pkg/errors"
+
+	capiutil "sigs.k8s.io/cluster-api/util"
+
+	"k8s.io/apimachinery/pkg/api/meta"
 	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/log"
+	"strings"
 
 	appv1alpha1 "github.com/PDeXchange/pac/apis/app/v1alpha1"
 	"github.com/PDeXchange/pac/controllers/util"
@@ -36,8 +44,42 @@ type CatalogReconciler struct {
 	Debug  bool
 }
 
-func reconcileVMCatalog(ctx context.Context, scope *CatalogScope) error {
-	scope.Logger.Info("Starting reconcile VM Catalog", "name", scope.Catalog.Name)
+func filterOwnedServices(ctx context.Context, scope *ControllerScope) ([]client.Object, error) {
+	var ownedServices []client.Object
+	eachFunc := func(o runtime.Object) error {
+		obj := o.(client.Object)
+		acc, err := meta.Accessor(obj)
+		if err != nil {
+			return nil
+		}
+
+		if capiutil.IsOwnedByObject(acc, scope.Catalog) {
+			ownedServices = append(ownedServices, obj)
+		}
+
+		return nil
+	}
+
+	var serviceList appv1alpha1.ServiceList
+	if err := scope.Client.List(ctx, &serviceList); err != nil {
+		return nil, errors.Wrap(err, "error listing services")
+	}
+
+	lists := []client.ObjectList{
+		&serviceList,
+	}
+
+	for _, list := range lists {
+		if err := meta.EachListItem(list, eachFunc); err != nil {
+			return nil, errors.Wrapf(err, "error finding owned services of catalog %s/%s", scope.Catalog.Namespace, scope.Catalog.Name)
+		}
+	}
+
+	return ownedServices, nil
+}
+
+func reconcileVMCatalog(ctx context.Context, scope *ControllerScope) error {
+	scope.Logger.Info("Starting VM catalog reconciliation ...", "name", scope.Catalog.Name)
 
 	vm := &scope.Catalog.Spec.VM
 
@@ -97,20 +139,23 @@ func reconcileVMCatalog(ctx context.Context, scope *CatalogScope) error {
 // - https://pkg.go.dev/sigs.k8s.io/controller-runtime@v0.13.0/pkg/reconcile
 func (r *CatalogReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	l := log.FromContext(ctx)
+	l.Info("Starting catalog reconciliation ...")
 
 	catalog := &appv1alpha1.Catalog{}
 	if err := r.Get(ctx, req.NamespacedName, catalog); err != nil {
-		l.Error(err, "unable to fetch Catalog")
 		return ctrl.Result{}, client.IgnoreNotFound(err)
 	}
 
 	defer func() {
-		if err := r.Status().Update(ctx, catalog); err != nil {
-			l.Error(err, "error updating catalog status")
+		if catalog.ObjectMeta.DeletionTimestamp.IsZero() {
+			if err := r.Status().Update(ctx, catalog); err != nil {
+				l.Error(err, "error updating catalog status")
+			}
 		}
 	}()
 
-	scope, err := NewCatalogScope(ctx, CatalogScopeParams{
+	scope, err := NewControllerScope(ctx, ControllerScopeParams{
+		Type:    catalogController,
 		Client:  r.Client,
 		Logger:  l,
 		Debug:   r.Debug,
@@ -120,19 +165,46 @@ func (r *CatalogReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 		return ctrl.Result{}, errors.Errorf("failed to create scope: %v", err)
 	}
 
+	if catalog.ObjectMeta.DeletionTimestamp.IsZero() {
+		if !controllerutil.ContainsFinalizer(catalog, appv1alpha1.CatalogFinalizer) {
+			controllerutil.AddFinalizer(catalog, appv1alpha1.CatalogFinalizer)
+			if err = r.Update(ctx, catalog); err != nil {
+				return ctrl.Result{}, fmt.Errorf("failed to add finalizer to catalog: %w", err)
+			}
+		}
+	} else {
+		if controllerutil.ContainsFinalizer(catalog, appv1alpha1.CatalogFinalizer) {
+			ownedServices, err := filterOwnedServices(ctx, scope)
+			if err != nil && strings.Contains(err.Error(), "") {
+				return ctrl.Result{}, errors.Wrap(err, "error filtering services owned by catalog")
+			}
+
+			if len(ownedServices) > 0 {
+				return ctrl.Result{RequeueAfter: time.Minute * 1}, errors.New("finalizer not removed since catalog still owning services")
+			} else {
+				controllerutil.RemoveFinalizer(catalog, appv1alpha1.CatalogFinalizer)
+				if err = r.Update(ctx, catalog); err != nil {
+					return ctrl.Result{}, fmt.Errorf("failed to remove finalizer from catalog: %w", err)
+				}
+				l.Info("removed finalizer on catalog")
+				return ctrl.Result{}, nil
+			}
+		}
+	}
+
 	switch catalog.Spec.Type {
 	case appv1alpha1.CatalogTypeVM:
 		if err = reconcileVMCatalog(ctx, scope); err != nil {
-			l.Error(err, "error reconciling vm catalog")
 			catalog.Status.Ready = false
 			catalog.Status.Message = err.Error()
+			return ctrl.Result{}, errors.Wrap(err, "error reconciling vm catalog")
 		}
 	default:
 		catalog.Status.Ready = false
 		catalog.Status.Message = fmt.Sprintf("not able to idenitfy catalog type %s", catalog.Spec.Type)
 	}
 
-	l.Info("Successfully reconciled catalog")
+	l.Info("Reconciled catalog")
 	return ctrl.Result{}, nil
 }
 

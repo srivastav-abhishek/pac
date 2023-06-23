@@ -3,7 +3,7 @@ kind: Catalog
 metadata:
   labels:
     app.kubernetes.io/name: catalog
-    app.kubernetes.io/instance: catalog-sample
+    app.kubernetes.io/instance: medium-vm
     app.kubernetes.io/part-of: pac
     app.kuberentes.io/managed-by: kustomize
     app.kubernetes.io/created-by: pac

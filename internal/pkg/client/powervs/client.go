@@ -2,12 +2,13 @@ package powervs
 
 import (
 	"context"
+	"github.com/pkg/errors"
+
 	"github.com/IBM-Cloud/power-go-client/clients/instance"
 	"github.com/IBM-Cloud/power-go-client/ibmpisession"
 	"github.com/IBM-Cloud/power-go-client/power/models"
 	"github.com/PDeXchange/pac/internal/pkg/client/iam"
 	"github.com/PDeXchange/pac/internal/pkg/client/utils"
-	"github.com/pkg/errors"
 )
 
 var _ PowerVS = &Client{}
@@ -68,6 +69,18 @@ func (s *Client) GetNetworkByName(name string) (*models.NetworkReference, error)
 	}
 
 	return nil, errors.Errorf("error retrieving network by name %s", name)
+}
+
+func (s *Client) CreateVM(opts *models.PVMInstanceCreate) (*models.PVMInstanceList, error) {
+	return s.instanceClient.Create(opts)
+}
+
+func (s *Client) GetVM(id string) (*models.PVMInstance, error) {
+	return s.instanceClient.Get(id)
+}
+
+func (s *Client) DeleteVM(id string) error {
+	return s.instanceClient.Delete(id)
 }
 
 type Options struct {
