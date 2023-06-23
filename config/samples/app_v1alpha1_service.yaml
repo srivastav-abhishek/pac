@@ -3,10 +3,17 @@ kind: Service
 metadata:
   labels:
     app.kubernetes.io/name: service
-    app.kubernetes.io/instance: service-sample
+    app.kubernetes.io/instance: medium-vm-test
     app.kubernetes.io/part-of: pac
     app.kuberentes.io/managed-by: kustomize
     app.kubernetes.io/created-by: pac
-  name: service-sample
+  name: user1-medium-vm-test
 spec:
-  # TODO(user): Add fields here
+  catalog:
+    name: <catalog_name>
+  display_name: <service_display_name>
+  expiry: "2023-07-12T14:09:47Z"
+  ssh_keys:
+    - ssh_key
+  user_id: user123
+

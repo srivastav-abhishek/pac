@@ -84,6 +84,7 @@ spec:
                 - NEW
                 - IN_PROGRESS
                 - CREATED
+                - ERROR
                 - FAILED
                 - EXPIRED
                 type: string
