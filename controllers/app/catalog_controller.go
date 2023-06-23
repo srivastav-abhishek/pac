@@ -144,9 +144,11 @@ func (r *CatalogReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 		return ctrl.Result{}, client.IgnoreNotFound(err)
 	}
 
+	catalogToBePatched := client.MergeFrom(catalog.DeepCopy())
+
 	defer func() {
 		if catalog.ObjectMeta.DeletionTimestamp.IsZero() {
-			if err := r.Status().Update(ctx, catalog); err != nil {
+			if err := r.Status().Patch(ctx, catalog, catalogToBePatched); err != nil {
 				l.Error(err, "error updating catalog status")
 			}
 		}

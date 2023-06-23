@@ -63,9 +63,11 @@ func (r *ServiceReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 		return ctrl.Result{}, client.IgnoreNotFound(err)
 	}
 
+	serviceToBePatched := client.MergeFrom(service.DeepCopy())
+
 	defer func() {
 		if service.ObjectMeta.DeletionTimestamp.IsZero() {
-			if err := r.Status().Update(ctx, service); err != nil {
+			if err := r.Status().Patch(ctx, service, serviceToBePatched); err != nil {
 				l.Error(err, "error updating service status")
 			}
 		}
