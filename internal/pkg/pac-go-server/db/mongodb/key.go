@@ -47,7 +47,7 @@ func (db *MongoDB) CreateKey(keys *models.Key) error {
 	return nil
 }
 
-// GetRequestByID returns a request by its ID
+// GetRequestByID returns a key by its ID
 func (db *MongoDB) GetKeyByID(id string) (*models.Key, error) {
 	var key models.Key
 
@@ -65,7 +65,7 @@ func (db *MongoDB) GetKeyByID(id string) (*models.Key, error) {
 		return nil, fmt.Errorf("no documents found")
 	}
 	if err != nil {
-		return nil, fmt.Errorf("error getting request: %w", err)
+		return nil, fmt.Errorf("error getting key: %w", err)
 	}
 
 	return &key, nil
@@ -81,7 +81,7 @@ func (db *MongoDB) DeleteKey(id string) error {
 	defer cancel()
 	_, err = collection.DeleteOne(ctx, bson.D{{Key: "_id", Value: objectId}})
 	if err != nil {
-		return fmt.Errorf("error deleting request: %w", err)
+		return fmt.Errorf("error deleting key: %w", err)
 	}
 
 	return nil
