@@ -75,11 +75,16 @@ func createVM(scope *ControllerScope) error {
 		networkID = *nwRef.NetworkID
 	}
 
+	imageRef, err := scope.PowerVSClient.GetImageByName(vmSpec.Image)
+	if err != nil {
+		return errors.Wrapf(err, "error retrieving image by name %s", vmSpec.Image)
+	}
+
 	memory := float64(vmSpec.Capacity.Memory)
 	processors, _ := strconv.ParseFloat(vmSpec.Capacity.CPU, 64)
 	createOpts := &models.PVMInstanceCreate{
 		ServerName: &scope.Service.Name,
-		ImageID:    &vmSpec.Image,
+		ImageID:    imageRef.ImageID,
 		NetworkIDs: []string{networkID},
 		Memory:     &memory,
 		Processors: &processors,
