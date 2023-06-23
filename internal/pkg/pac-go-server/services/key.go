@@ -77,13 +77,14 @@ func CreateKey(c *gin.Context) {
 func DeleteKey(c *gin.Context) {
 	id := c.Param("id")
 	key, err := dbCon.GetKeyByID(id)
+	kc := utils.NewKeyClockClient(c.Request.Context())
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("failed to fetch the requested record from the db, err: %s", err.Error())})
 		return
 	}
 
-	if key.UserID != c.Request.Context().Value("userid").(string) {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "You do not have permission to delete this request."})
+	if key.UserID != c.Request.Context().Value("userid").(string) && !kc.IsRole(utils.ManagerRole) {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "You do not have permission to delete this key."})
 		return
 	}
 
