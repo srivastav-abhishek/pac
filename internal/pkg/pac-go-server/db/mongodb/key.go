@@ -16,11 +16,12 @@ func (db *MongoDB) GetKeyByUserID(id string) ([]models.Key, error) {
 
 	filter := bson.D{{}}
 	if id != "" {
-		filter = bson.D{{"user_id", id}}
+		filter = bson.D{{Key: "user_id", Value: id}}
 	}
 
 	collection := db.Database.Collection("keys")
-	ctx, _ := context.WithTimeout(context.Background(), dbContextTimeout)
+	ctx, cancel := context.WithTimeout(context.Background(), dbContextTimeout)
+	defer cancel()
 	cur, err := collection.Find(ctx, filter)
 	if err != nil {
 		return nil, fmt.Errorf("error getting keys: %w", err)
@@ -36,7 +37,8 @@ func (db *MongoDB) GetKeyByUserID(id string) ([]models.Key, error) {
 
 func (db *MongoDB) CreateKey(keys *models.Key) error {
 	collection := db.Database.Collection("keys")
-	ctx, _ := context.WithTimeout(context.Background(), dbContextTimeout)
+	ctx, cancel := context.WithTimeout(context.Background(), dbContextTimeout)
+	defer cancel()
 	_, err := collection.InsertOne(ctx, keys)
 	if err != nil {
 		return fmt.Errorf("error inserting Key: %w", err)
@@ -56,7 +58,8 @@ func (db *MongoDB) GetKeyByID(id string) (*models.Key, error) {
 	filter := bson.M{"_id": objectId}
 
 	collection := db.Database.Collection("keys")
-	ctx, _ := context.WithTimeout(context.Background(), dbContextTimeout)
+	ctx, cancel := context.WithTimeout(context.Background(), dbContextTimeout)
+	defer cancel()
 	err = collection.FindOne(ctx, filter).Decode(&key)
 	if err == mongo.ErrNoDocuments {
 		return nil, fmt.Errorf("no documents found")
@@ -74,8 +77,9 @@ func (db *MongoDB) DeleteKey(id string) error {
 		return fmt.Errorf("invalid id: %w", err)
 	}
 	collection := db.Database.Collection("keys")
-	ctx, _ := context.WithTimeout(context.Background(), dbContextTimeout)
-	_, err = collection.DeleteOne(ctx, bson.D{{"_id", objectId}})
+	ctx, cancel := context.WithTimeout(context.Background(), dbContextTimeout)
+	defer cancel()
+	_, err = collection.DeleteOne(ctx, bson.D{{Key: "_id", Value: objectId}})
 	if err != nil {
 		return fmt.Errorf("error deleting request: %w", err)
 	}

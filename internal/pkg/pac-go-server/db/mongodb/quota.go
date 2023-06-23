@@ -29,7 +29,8 @@ func (db *MongoDB) GetQuotaForGroupID(id string) (*models.Quota, error) {
 	filter := bson.M{"group_id": id}
 
 	collection := db.Database.Collection("quota")
-	ctx, _ := context.WithTimeout(context.Background(), dbContextTimeout)
+	ctx, cancel := context.WithTimeout(context.Background(), dbContextTimeout)
+	defer cancel()
 	err := collection.FindOne(ctx, filter).Decode(&quota)
 	if err == mongo.ErrNoDocuments {
 		logger.Info("No documents found for quota", zap.Error(err))
@@ -44,7 +45,8 @@ func (db *MongoDB) GetQuotaForGroupID(id string) (*models.Quota, error) {
 
 func (db *MongoDB) NewQuota(quota *models.Quota) error {
 	collection := db.Database.Collection("quota")
-	ctx, _ := context.WithTimeout(context.Background(), dbContextTimeout)
+	ctx, cancel := context.WithTimeout(context.Background(), dbContextTimeout)
+	defer cancel()
 	_, err := collection.InsertOne(ctx, quota)
 	if err != nil {
 		return fmt.Errorf("error while adding an entry for quota: %w", err)
@@ -54,8 +56,9 @@ func (db *MongoDB) NewQuota(quota *models.Quota) error {
 
 func (db *MongoDB) UpdateQuota(quota *models.Quota) error {
 	collection := db.Database.Collection("quota")
-	ctx, _ := context.WithTimeout(context.Background(), dbContextTimeout)
-	_, err := collection.UpdateOne(ctx, bson.M{"group_id": quota.GroupID}, bson.D{{"$set", bson.D{{Key: "capacity", Value: quota.Capacity}}}})
+	ctx, cancel := context.WithTimeout(context.Background(), dbContextTimeout)
+	defer cancel()
+	_, err := collection.UpdateOne(ctx, bson.M{"group_id": quota.GroupID}, bson.D{{Key: "$set", Value: bson.D{{Key: "capacity", Value: quota.Capacity}}}})
 	if err != nil {
 		return fmt.Errorf("error while adding an entry for quota: %w", err)
 	}
@@ -64,7 +67,8 @@ func (db *MongoDB) UpdateQuota(quota *models.Quota) error {
 
 func (db *MongoDB) DeleteQuota(id string) error {
 	collection := db.Database.Collection("quota")
-	ctx, _ := context.WithTimeout(context.Background(), dbContextTimeout)
+	ctx, cancel := context.WithTimeout(context.Background(), dbContextTimeout)
+	defer cancel()
 	filter := bson.M{"group_id": id}
 	_, err := collection.DeleteOne(ctx, filter)
 	if err != nil {
@@ -81,7 +85,8 @@ func (db *MongoDB) GetGroupsQuota(groups []string) ([]models.Quota, error) {
 	filter := bson.M{"group_id": bson.M{"$in": groups}}
 
 	collection := db.Database.Collection("quota")
-	ctx, _ := context.WithTimeout(context.Background(), dbContextTimeout)
+	ctx, cancel := context.WithTimeout(context.Background(), dbContextTimeout)
+	defer cancel()
 	cur, err := collection.Find(ctx, filter)
 	if err != nil {
 		return nil, fmt.Errorf("error getting requests: %w", err)

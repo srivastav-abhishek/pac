@@ -46,7 +46,8 @@ func (db *MongoDB) Connect() error {
 	}
 	db.client = client
 
-	ctx, _ := context.WithTimeout(context.Background(), 10*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
 
 	//ping the database
 	err = client.Ping(ctx, nil)

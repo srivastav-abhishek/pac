@@ -18,11 +18,12 @@ func (db *MongoDB) GetRequestsByUserID(id string) ([]models.Request, error) {
 
 	filter := bson.D{{}}
 	if id != "" {
-		filter = bson.D{{"user_id", id}}
+		filter = bson.D{{Key: "user_id", Value: id}}
 	}
 
 	collection := db.Database.Collection("requests")
-	ctx, _ := context.WithTimeout(context.Background(), dbContextTimeout)
+	ctx, cancel := context.WithTimeout(context.Background(), dbContextTimeout)
+	defer cancel()
 	cur, err := collection.Find(ctx, filter)
 	if err != nil {
 		return nil, fmt.Errorf("error getting requests: %w", err)
@@ -38,7 +39,8 @@ func (db *MongoDB) GetRequestsByUserID(id string) ([]models.Request, error) {
 
 func (db *MongoDB) NewRequest(request *models.Request) error {
 	collection := db.Database.Collection("requests")
-	ctx, _ := context.WithTimeout(context.Background(), dbContextTimeout)
+	ctx, cancel := context.WithTimeout(context.Background(), dbContextTimeout)
+	defer cancel()
 	_, err := collection.InsertOne(ctx, request)
 	if err != nil {
 		return fmt.Errorf("error inserting request: %w", err)
@@ -51,15 +53,16 @@ func (db *MongoDB) GetRequestByGroupIDAndUserID(groupID string, userID string) (
 	var requests []models.Request
 
 	filter := bson.D{
-		{"$and",
-			bson.A{
-				bson.D{{"group.group_id", groupID}},
-				bson.D{{"user_id", userID}},
+		{Key: "$and",
+			Value: bson.A{
+				bson.D{{Key: "group.group_id", Value: groupID}},
+				bson.D{{Key: "user_id", Value: userID}},
 			}},
 	}
 
 	collection := db.Database.Collection("requests")
-	ctx, _ := context.WithTimeout(context.Background(), dbContextTimeout)
+	ctx, cancel := context.WithTimeout(context.Background(), dbContextTimeout)
+	defer cancel()
 	cur, err := collection.Find(ctx, filter)
 	if err != nil {
 		return nil, fmt.Errorf("error getting request: %w", err)
@@ -82,7 +85,8 @@ func (db *MongoDB) GetRequestByID(id string) (*models.Request, error) {
 	filter := bson.M{"_id": objectId}
 
 	collection := db.Database.Collection("requests")
-	ctx, _ := context.WithTimeout(context.Background(), dbContextTimeout)
+	ctx, cancel := context.WithTimeout(context.Background(), dbContextTimeout)
+	defer cancel()
 	err = collection.FindOne(ctx, filter).Decode(&request)
 	if err == mongo.ErrNoDocuments {
 		log.Println("no documents found")
@@ -101,8 +105,9 @@ func (db *MongoDB) DeleteRequest(id string) error {
 		return fmt.Errorf("invalid id: %w", err)
 	}
 	collection := db.Database.Collection("requests")
-	ctx, _ := context.WithTimeout(context.Background(), dbContextTimeout)
-	_, err = collection.DeleteOne(ctx, bson.D{{"_id", objectId}})
+	ctx, cancel := context.WithTimeout(context.Background(), dbContextTimeout)
+	defer cancel()
+	_, err = collection.DeleteOne(ctx, bson.D{{Key: "_id", Value: objectId}})
 	if err != nil {
 		return fmt.Errorf("error deleting request: %w", err)
 	}
@@ -116,8 +121,9 @@ func (db *MongoDB) UpdateRequestState(id string, state models.RequestStateType) 
 		return fmt.Errorf("invalid id: %w", err)
 	}
 	collection := db.Database.Collection("requests")
-	ctx, _ := context.WithTimeout(context.Background(), dbContextTimeout)
-	_, err = collection.UpdateOne(ctx, bson.D{{"_id", objectId}}, bson.D{{"$set", bson.D{{"state", state}}}})
+	ctx, cancel := context.WithTimeout(context.Background(), dbContextTimeout)
+	defer cancel()
+	_, err = collection.UpdateOne(ctx, bson.D{{Key: "_id", Value: objectId}}, bson.D{{Key: "$set", Value: bson.D{{Key: "state", Value: state}}}})
 	if err != nil {
 		return fmt.Errorf("error updating request: %w", err)
 	}
@@ -130,12 +136,10 @@ func (db *MongoDB) GetRequestByServiceName(serviceName string) ([]models.Request
 	if serviceName == "" {
 		return nil, errors.New("serviceName name is not set")
 	}
-	filter := bson.D{{
-		Key:   "service.name",
-		Value: serviceName,
-	}}
+	filter := bson.D{{Key: "service.name", Value: serviceName}}
 	collection := db.Database.Collection("requests")
-	ctx, _ := context.WithTimeout(context.Background(), dbContextTimeout)
+	ctx, cancel := context.WithTimeout(context.Background(), dbContextTimeout)
+	defer cancel()
 	cur, err := collection.Find(ctx, filter)
 	if err != nil {
 		return nil, fmt.Errorf("error getting requests: %w", err)
