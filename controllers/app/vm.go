@@ -30,6 +30,7 @@ import (
 func extractPVMInstance(scope *ControllerScope, pvmInstance *models.PVMInstance) {
 	scope.Service.Status.VM.InstanceID = *pvmInstance.PvmInstanceID
 	for _, nw := range pvmInstance.Networks {
+		scope.Service.Status.VM.ExternalIPAddress = nw.ExternalIP
 		scope.Service.Status.VM.IPAddress = nw.IPAddress
 	}
 	scope.Service.Status.VM.State = *pvmInstance.Status
@@ -112,7 +113,7 @@ func updateStatus(scope *ControllerScope, pvmInstance *models.PVMInstance) {
 	switch *pvmInstance.Status {
 	case "ACTIVE":
 		scope.Service.Status.State = appv1alpha1.ServiceStateCreated
-		scope.Service.Status.AccessInfo = appv1alpha1.VMAccessInfoTemplate(scope.Service.Status.VM.IPAddress)
+		scope.Service.Status.AccessInfo = appv1alpha1.VMAccessInfoTemplate(scope.Service.Status.VM.ExternalIPAddress, scope.Service.Status.VM.IPAddress)
 	case "ERROR":
 		scope.Service.Status.State = appv1alpha1.ServiceStateFailed
 		scope.Service.Status.AccessInfo = ""

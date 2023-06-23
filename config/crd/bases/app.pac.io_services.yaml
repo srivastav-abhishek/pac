@@ -91,6 +91,8 @@ spec:
               vm:
                 description: VM has the detail of provisioned vm service
                 properties:
+                  external_ip_address:
+                    type: string
                   instance_id:
                     type: string
                   ip_address:
