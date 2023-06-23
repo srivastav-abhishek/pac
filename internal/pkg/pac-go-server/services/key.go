@@ -60,19 +60,18 @@ func CreateKey(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid ssh key"})
 		return
 	}
-	// Step1: Validate the Key name length
-	if len(key.Name) > 32 {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Name must be 32 characters or less."})
+	// Validate the Key name length
+	if len(key.Name) > 32 || key.Name == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Name must be 32 characters and connot empty."})
 		return
 	}
-
-	// Step4: Insert the request into the database
+	// Insert the request into the database
 	if err := dbCon.CreateKey(&key); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("failed to insert the request into the db, err: %s", err.Error())})
 		return
 	}
 
-	c.JSON(http.StatusCreated, key)
+	c.Status(http.StatusCreated)
 }
 
 func DeleteKey(c *gin.Context) {
