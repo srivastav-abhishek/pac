@@ -26,6 +26,5 @@ type DB interface {
 	UpdateQuota(*models.Quota) error
 	DeleteQuota(string) error
 	GetQuotaForGroupID(string) (*models.Quota, error)
-	GetUserQuota(string) (models.Quota, error)
 	GetGroupsQuota([]string) ([]models.Quota, error)
 }

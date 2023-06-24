@@ -124,6 +124,12 @@ func CreateService(c *gin.Context) {
 	}
 	logger.Debug("catalog details", zap.String("name", service.CatalogName), zap.Any("catalog", catalog))
 
+	if !catalog.Status.Ready {
+		logger.Error("catalog is not in ready state cannot deploy service", zap.Any("catalog", catalog))
+		c.JSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("catalog %s is not in ready state, cannot deploy service", catalog.Name)})
+		return
+	}
+
 	// fetch userId
 	kc := utils.NewKeyClockClient(c.Request.Context())
 	userId := kc.GetUserID()
@@ -146,8 +152,8 @@ func CreateService(c *gin.Context) {
 		keys = append(keys, userKey.Content)
 	}
 
-	// fetch user total quota
-	quota, err := dbCon.GetUserQuota(userId)
+	// fetch the user quota
+	quota, err := getUserQuota(c)
 	if err != nil {
 		logger.Error("failed to get user quota", zap.String("userid", userId), zap.Error(err))
 		c.JSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("%v", err)})
@@ -155,17 +161,17 @@ func CreateService(c *gin.Context) {
 	}
 	logger.Debug("user quota", zap.Any("quota", quota))
 
-	// fetch the user used capacity across all provisioned services
-	usedCapacity, err := usedCapacity(userId)
+	// fetch the user used quota across all provisioned services
+	usedQuota, err := getUsedQuota(userId)
 	if err != nil {
-		logger.Error("failed to get used capacity", zap.String("userid", userId), zap.Error(err))
-		c.JSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("failed to get used capacity %v", err)})
+		logger.Error("failed to get used quota", zap.String("userid", userId), zap.Error(err))
+		c.JSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("failed to get used quota %v", err)})
 		return
 	}
-	logger.Debug("user used capacity", zap.Any("used capacity", usedCapacity))
+	logger.Debug("user used quota", zap.Any("used quota", usedQuota))
 
 	// calculate the total user capacity need to provision service
-	neededCapacity, err := AddCapacity(usedCapacity, catalog.Spec.Capacity)
+	neededCapacity, err := AddCapacity(usedQuota, catalog.Spec.Capacity)
 	if err != nil {
 		logger.Error("failed to needed capacity", zap.String("userid", userId), zap.Error(err))
 		c.JSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("failed to get needed capacity %v", err)})
@@ -175,16 +181,16 @@ func CreateService(c *gin.Context) {
 
 	// calculate the remaining capacity of user if provision this service
 	remainingCapacity := models.Capacity{
-		CPU:    quota.Capacity.CPU - neededCapacity.CPU,
-		Memory: quota.Capacity.Memory - quota.Capacity.Memory,
+		CPU:    quota.CPU - neededCapacity.CPU,
+		Memory: quota.Memory - neededCapacity.Memory,
 	}
 	logger.Debug("remaining capacity", zap.Any("remaining capacity", remainingCapacity))
 
 	if remainingCapacity.CPU < 0 || remainingCapacity.Memory < 0 {
 		logger.Error("user does not have sufficient quota to provision service", zap.Any("required capacity", catalog.Spec.Capacity),
-			zap.Any("user quota", quota.Capacity), zap.Any("used capacity", usedCapacity))
+			zap.Any("user quota", quota), zap.Any("used capacity", usedQuota))
 		c.JSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("user does not have quota to provision resource, Quota: %v Required: %v Used: %v",
-			quota.Capacity, catalog.Spec.Capacity, usedCapacity)})
+			quota, catalog.Spec.Capacity, usedQuota)})
 		return
 	}
 
@@ -294,8 +300,8 @@ func generateServiceName(service models.Service) string {
 	return name
 }
 
-// usedCapacity calculates and returns the total capacity consumed by user provisioned service
-func usedCapacity(userId string) (models.Capacity, error) {
+// getUsedQuota calculates and returns the total capacity consumed by user provisioned service
+func getUsedQuota(userId string) (models.Capacity, error) {
 	var consumedCapacity models.Capacity
 	catalogMap := make(map[string]float64)
 	serviceList, err := kubeClient.GetServices(userId)
