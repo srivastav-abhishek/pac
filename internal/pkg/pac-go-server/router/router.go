@@ -80,6 +80,9 @@ func CreateRouter() *gin.Engine {
 		authorizedAdmin.POST("/groups/:id/quota", services.CreateQuota)
 		authorizedAdmin.PUT("/groups/:id/quota", services.UpdateQuota)
 		authorizedAdmin.DELETE("/groups/:id/quota", services.DeleteQuota)
+
+		authorizedAdmin.GET("/users", services.GetUsers)
+		authorizedAdmin.GET("/users/:id", services.GetUser)
 	}
 
 	// service related endpoints

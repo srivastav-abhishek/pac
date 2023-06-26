@@ -80,6 +80,7 @@ func CreateQuota(c *gin.Context) {
 		Capacity: quota.Capacity,
 	}); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("Failed to insert the quota into the database, Error: %s", err.Error())})
+		return
 	}
 
 	logger.Info("created quota successfully", zap.String("groupID", gid), zap.Any("Capacity", quota.Capacity))
