@@ -173,6 +173,7 @@ func NewGroupRequest(c *gin.Context) {
 	} else if err == utils.ErrorGroupNotFound {
 		logger.Error("group not found", zap.String("group id", groupID))
 		c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
+		return
 	}
 	logger.Debug("fetched group", zap.Any("groups", grp))
 

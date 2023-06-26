@@ -34,6 +34,7 @@ func GetGroup(c *gin.Context) {
 		return
 	} else if err == utils.ErrorGroupNotFound {
 		c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
+		return
 	}
 	c.JSON(http.StatusOK, grp)
 }

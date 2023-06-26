@@ -11,6 +11,7 @@ import (
 
 var (
 	ErrorGroupNotFound = errors.New("group not found")
+	ErrorUserNotFound  = errors.New("user not found")
 )
 
 const (
@@ -38,6 +39,43 @@ func NewKeyClockClient(ctx context.Context) *KeyClockClient {
 
 func (k *KeyClockClient) GetClient() *gocloak.GoCloak {
 	return k.client
+}
+
+// GetUser by ID
+func (k *KeyClockClient) GetUser(id string) (*models.User, error) {
+	users, err := k.GetUsers()
+	if err != nil {
+		return nil, err
+	}
+	for _, user := range users {
+		if user.ID == id {
+			return &user, nil
+		}
+	}
+	return nil, ErrorUserNotFound
+}
+
+// GetUsers for listing all the users from keycloak
+func (k *KeyClockClient) GetUsers() ([]models.User, error) {
+	var users []models.User
+	usr, err := k.client.GetUsers(k.ctx, k.accessToken, k.realm, gocloak.GetUsersParams{})
+	if err != nil {
+		return nil, err
+	}
+	for _, user := range usr {
+		u := models.User{
+			Username:  *user.Username,
+			ID:        *user.ID,
+			FirstName: *user.FirstName,
+			LastName:  *user.LastName,
+		}
+		// Email field is optional, hence check for nil before assigning.
+		if user.Email != nil {
+			u.Email = *user.Email
+		}
+		users = append(users, u)
+	}
+	return users, nil
 }
 
 func (k *KeyClockClient) GetGroups() ([]models.Group, error) {

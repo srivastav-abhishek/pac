@@ -54,6 +54,7 @@ func CreateKey(c *gin.Context) {
 	key.UserID = userID
 	if key.Content == "" {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Content cannot be empty."})
+		return
 	}
 
 	if _, _, _, _, err := ssh.ParseAuthorizedKey([]byte(key.Content)); err != nil {
