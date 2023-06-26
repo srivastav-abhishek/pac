@@ -103,8 +103,10 @@ func reconcileVMCatalog(ctx context.Context, scope *ControllerScope) error {
 		return errors.Errorf("image '%s' not in active state, current state: %s", vm.Image, *image.State)
 	}
 
-	if _, err = scope.PowerVSClient.GetNetworkByName(vm.Network); err != nil {
-		return err
+	if vm.Network != "" {
+		if _, err = scope.PowerVSClient.GetNetworkByName(vm.Network); err != nil {
+			return err
+		}
 	}
 
 	if err = util.ValidateSysType(vm.SystemType); err != nil {
@@ -161,12 +163,6 @@ func (r *CatalogReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 		}
 	}()
 
-	// Set ready as false if catalog is retired
-	if catalog.Spec.Retired {
-		catalog.Status.Message = "catalog is retired"
-		return ctrl.Result{}, nil
-	}
-
 	if catalog.ObjectMeta.DeletionTimestamp.IsZero() {
 		if !controllerutil.ContainsFinalizer(catalog, appv1alpha1.CatalogFinalizer) {
 			controllerutil.AddFinalizer(catalog, appv1alpha1.CatalogFinalizer)
@@ -192,6 +188,12 @@ func (r *CatalogReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 				return ctrl.Result{}, nil
 			}
 		}
+	}
+
+	// Set ready as false if catalog is retired
+	if catalog.Spec.Retired {
+		catalog.Status.Message = "catalog is retired"
+		return ctrl.Result{}, nil
 	}
 
 	switch catalog.Spec.Type {
