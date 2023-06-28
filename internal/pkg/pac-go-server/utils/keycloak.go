@@ -110,6 +110,10 @@ func (k *KeyClockClient) AddUserToGroup(userID, groupID string) error {
 	return k.client.AddUserToGroup(k.ctx, k.accessToken, k.realm, userID, groupID)
 }
 
+func (k *KeyClockClient) DeleteUserFromGroup(userID, groupID string) error {
+	return k.client.DeleteUserFromGroup(k.ctx, k.accessToken, k.realm, userID, groupID)
+}
+
 func (k *KeyClockClient) IsMemberOfGroup(name string) bool {
 	groups := k.GetUserGroups()
 	for _, group := range groups {

@@ -221,6 +221,91 @@ func NewGroupRequest(c *gin.Context) {
 	c.Status(http.StatusCreated)
 }
 
+func ExitGroup(c *gin.Context) {
+	logger := log.GetLogger()
+
+	kc := utils.NewKeyClockClient(c.Request.Context())
+
+	var request = models.GetRequest()
+	// get the authenticated user's username and ID
+	username := c.Request.Context().Value("username").(string)
+	userID := c.Request.Context().Value("userid").(string)
+
+	if err := c.BindJSON(&request); err != nil {
+		logger.Error("failed to bind request", zap.Error(err))
+		c.JSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("failed to bind request body, err: %s", err.Error())})
+		return
+	}
+	logger.Debug("request body", zap.Any("request", request))
+
+	// validate request params
+	if err := validateCreateRequestParams(request); len(err) > 0 {
+		logger.Error("error in exit group request validation", zap.Errors("errors", err))
+		c.JSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("%v", err)})
+		return
+	}
+
+	// check if the user is already a member of the group
+	groupID := c.Param("id")
+	grp, err := kc.GetGroup(groupID)
+	if err != nil && err != utils.ErrorGroupNotFound {
+		logger.Error("failed to get groups", zap.String("group id", groupID), zap.Error(err))
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	} else if err == utils.ErrorGroupNotFound {
+		logger.Error("group not found", zap.String("group id", groupID))
+		c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
+		return
+	}
+	logger.Debug("fetched group", zap.Any("groups", grp))
+
+	if !kc.IsMemberOfGroup(grp.Name) {
+		logger.Debug("user is not member of group",  zap.String("user", username), zap.String("group", grp.Name))
+		c.JSON(http.StatusBadRequest, gin.H{"error": "You are already not a member of this group."})
+		return
+	}
+
+	// check if the user has already requested to exit from the group
+	r, err := dbCon.GetRequestByGroupIDAndUserID(groupID, userID)
+	if err != nil {
+		logger.Error("failed to fetch requests", zap.String("group id", groupID), zap.String("user id", userID), zap.Error(err))
+		c.JSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("failed to fetch the requested record from the db, err: %s", err.Error())})
+		return
+	}
+	logger.Debug("fetched request", zap.Any("request", r))
+	for _, request := range r {
+		if request.RequestType != models.RequestExitFromGroup {
+			continue
+		}
+		if request.State == models.RequestStateNew {
+			logger.Debug("user is already requested to exit form this group", zap.String("group", grp.Name), zap.Any("request", r))
+			c.JSON(http.StatusBadRequest, gin.H{"error": "You have already requested to exit from this group."})
+			return
+		}
+	}
+
+	// insert the request into the database
+	if err := dbCon.NewRequest(&models.Request{
+		UserID:        userID,
+		CreatedAt:     time.Now(),
+		State:         models.RequestStateNew,
+		Justification: request.Justification,
+		RequestType:   models.RequestExitFromGroup,
+		GroupAdmission: &models.GroupAdmission{
+			GroupID:   groupID,
+			Group:     grp.Name,
+			Requester: username,
+		},
+	}); err != nil {
+		logger.Error("failed to create request", zap.Error(err))
+		c.JSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("failed to insert the request into the db, err: %s", err.Error())})
+		return
+	}
+
+	logger.Debug("successfully created request")
+	c.Status(http.StatusCreated)
+}
+
 func ApproveRequest(c *gin.Context) {
 	logger := log.GetLogger()
 	kc := utils.NewKeyClockClient(c.Request.Context())
@@ -242,6 +327,13 @@ func ApproveRequest(c *gin.Context) {
 	case models.RequestAddToGroup:
 		if err := utils.NewKeyClockClient(c.Request.Context()).AddUserToGroup(request.UserID, request.GroupAdmission.GroupID); err != nil {
 			logger.Error("failed to add user to group", zap.String("user id", request.UserID),
+				zap.String("group id", request.GroupAdmission.GroupID), zap.Error(err))
+			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			return
+		}
+	case models.RequestExitFromGroup:
+		if err := utils.NewKeyClockClient(c.Request.Context()).DeleteUserFromGroup(request.UserID, request.GroupAdmission.GroupID); err != nil {
+			logger.Error("failed to remove user from group", zap.String("user id", request.UserID),
 				zap.String("group id", request.GroupAdmission.GroupID), zap.Error(err))
 			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 			return
@@ -345,18 +437,16 @@ func validateCreateRequestParams(request models.Request) []error {
 	if len(request.Justification) > 500 {
 		errs = append(errs, errors.New("justification must be 500 characters or less"))
 	}
-	if request.RequestType != models.RequestAddToGroup && request.RequestType != models.RequestExtendServiceExpiry {
-		errs = append(errs, fmt.Errorf("invalid request_type is set, valid values are %s %s", models.RequestAddToGroup, models.RequestExtendServiceExpiry))
-	}
 
 	switch request.RequestType {
 	case models.RequestAddToGroup:
+	case models.RequestExitFromGroup:
 	case models.RequestExtendServiceExpiry:
 		if request.ServiceExpiry == nil || request.ServiceExpiry.Expiry.IsZero() {
 			errs = append(errs, errors.New("expiry time should be set"))
 		}
 	default:
-		errs = append(errs, fmt.Errorf("invalid request_type is set, valid values are %s %s", models.RequestAddToGroup, models.RequestExtendServiceExpiry))
+		errs = append(errs, fmt.Errorf("invalid request_type: \"%s\" is set, valid values are %s %s %s", request.RequestType, models.RequestAddToGroup, models.RequestExitFromGroup, models.RequestExtendServiceExpiry))
 	}
 	return errs
 }

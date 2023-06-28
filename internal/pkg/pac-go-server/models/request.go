@@ -14,6 +14,7 @@ const (
 	RequestStateApproved       RequestStateType = "APPROVED"
 	RequestStateRejected       RequestStateType = "REJECTED"
 	RequestAddToGroup          RequestType      = "GROUP"
+	RequestExitFromGroup       RequestType      = "GROUP_EXIT"
 	RequestExtendServiceExpiry RequestType      = "SERVICE_EXPIRY"
 )
 
