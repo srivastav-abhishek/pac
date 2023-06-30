@@ -42,7 +42,7 @@ type CatalogReconciler struct {
 	Debug  bool
 }
 
-func filterOwnedServices(ctx context.Context, scope *ControllerScope) ([]client.Object, error) {
+func filterOwnedServices(ctx context.Context, scope *CatalogScope) ([]client.Object, error) {
 	var ownedServices []client.Object
 	eachFunc := func(o runtime.Object) error {
 		obj := o.(client.Object)
@@ -76,7 +76,7 @@ func filterOwnedServices(ctx context.Context, scope *ControllerScope) ([]client.
 	return ownedServices, nil
 }
 
-func reconcileVMCatalog(ctx context.Context, scope *ControllerScope) error {
+func reconcileVMCatalog(ctx context.Context, scope *CatalogScope) error {
 	scope.Logger.Info("Starting VM catalog reconciliation ...", "name", scope.Catalog.Name)
 
 	vm := &scope.Catalog.Spec.VM
@@ -146,19 +146,22 @@ func (r *CatalogReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 		return ctrl.Result{}, client.IgnoreNotFound(err)
 	}
 
-	scope, err := NewControllerScope(ctx, ControllerScopeParams{
-		Type:    catalogController,
-		Client:  r.Client,
-		Logger:  l,
-		Debug:   r.Debug,
-		Catalog: catalog,
+	scope, err := NewCatalogScope(ctx, CatalogScopeParams{
+		ControllerScopeParams: ControllerScopeParams{
+			Type:    catalogController,
+			Client:  r.Client,
+			Logger:  l,
+			Debug:   r.Debug,
+			Catalog: catalog,
+		},
 	})
+
 	if err != nil {
 		return ctrl.Result{}, errors.Errorf("failed to create scope: %v", err)
 	}
 
 	defer func() {
-		if err := scope.Close(); err != nil && err == nil {
+		if err := scope.PatchCatalogObject(); err != nil {
 			l.Error(err, "error updating catalog status")
 		}
 	}()

@@ -88,6 +88,9 @@ spec:
                 - FAILED
                 - EXPIRED
                 type: string
+              successful:
+                description: Successful indicates if the service was provisioned successfully
+                type: boolean
               vm:
                 description: VM has the detail of provisioned vm service
                 properties:

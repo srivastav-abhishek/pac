@@ -23,12 +23,24 @@ import (
 	"strings"
 	"time"
 
+	utilrand "k8s.io/apimachinery/pkg/util/rand"
+
 	"github.com/IBM-Cloud/power-go-client/power/models"
+	"github.com/IBM/go-sdk-core/v5/core"
 	appv1alpha1 "github.com/PDeXchange/pac/apis/app/v1alpha1"
 	"github.com/pkg/errors"
 )
 
-func extractPVMInstance(scope *ControllerScope, pvmInstance *models.PVMInstance) {
+const (
+	publicNetworkPrefix = "pac-public-network"
+)
+
+var (
+	ErroNoPublicNetwork = errors.New("no public network available to use for vm creation")
+	dnsServers          = []string{"9.9.9.9", "1.1.1.1"}
+)
+
+func extractPVMInstance(scope *ServiceScope, pvmInstance *models.PVMInstance) {
 	scope.Service.Status.VM.InstanceID = *pvmInstance.PvmInstanceID
 	for _, nw := range pvmInstance.Networks {
 		scope.Service.Status.VM.ExternalIPAddress = nw.ExternalIP
@@ -37,7 +49,7 @@ func extractPVMInstance(scope *ControllerScope, pvmInstance *models.PVMInstance)
 	scope.Service.Status.VM.State = *pvmInstance.Status
 }
 
-func getAvailablePubNetwork(scope *ControllerScope) (string, error) {
+func getAvailablePubNetwork(scope *ServiceScope) (string, error) {
 	networks, err := scope.PowerVSClient.GetNetworks()
 	if err != nil {
 		return "", errors.Wrap(err, "error get all networks")
@@ -56,18 +68,33 @@ func getAvailablePubNetwork(scope *ControllerScope) (string, error) {
 		}
 	}
 
-	return "", errors.New("no public network available to use for vm creation")
+	return "", ErroNoPublicNetwork
 }
 
-func createVM(scope *ControllerScope) error {
+func generateNetworkName() string {
+	return fmt.Sprintf("%s-%s", publicNetworkPrefix, utilrand.String(5))
+}
+
+func createVM(scope *ServiceScope) error {
 	vmSpec := scope.Catalog.Spec.VM
 
 	var networkID string
 	if vmSpec.Network == "" {
 		var err error
 		networkID, err = getAvailablePubNetwork(scope)
-		if err != nil {
+		if err != nil && err != ErroNoPublicNetwork {
 			return errors.Wrap(err, "error retrieving available public network in powervs instance")
+		} else if err == ErroNoPublicNetwork {
+			// create a public network and use it
+			network, err := scope.PowerVSClient.CreateNetwork(&models.NetworkCreate{
+				Name:       generateNetworkName(),
+				Type:       core.StringPtr("pub-vlan"),
+				DNSServers: dnsServers,
+			})
+			if err != nil {
+				return errors.Wrap(err, "error creating public network")
+			}
+			networkID = *network.NetworkID
 		}
 	} else {
 		nwRef, err := scope.PowerVSClient.GetNetworkByName(vmSpec.Network)
@@ -99,6 +126,7 @@ func createVM(scope *ControllerScope) error {
 	if err != nil {
 		return err
 	}
+	scope.Service.Status.Message = "vm creation started, will update the access info once vm is ready"
 
 	for _, i := range *pvmInstanceList {
 		extractPVMInstance(scope, i)
@@ -108,38 +136,36 @@ func createVM(scope *ControllerScope) error {
 	return nil
 }
 
-func updateStatus(scope *ControllerScope, pvmInstance *models.PVMInstance) {
+func updateStatus(scope *ServiceScope, pvmInstance *models.PVMInstance) {
 	extractPVMInstance(scope, pvmInstance)
 
 	switch *pvmInstance.Status {
 	case "ACTIVE":
+		scope.Service.Status.SetSuccessful()
 		scope.Service.Status.State = appv1alpha1.ServiceStateCreated
 		scope.Service.Status.AccessInfo = appv1alpha1.VMAccessInfoTemplate(scope.Service.Status.VM.ExternalIPAddress, scope.Service.Status.VM.IPAddress)
+		scope.Service.Status.Message = ""
 	case "ERROR":
 		scope.Service.Status.State = appv1alpha1.ServiceStateFailed
+		if pvmInstance.Fault != nil {
+			scope.Service.Status.Message = fmt.Sprintf("vm creation failed with reason: %s", pvmInstance.Fault.Message)
+		}
 		scope.Service.Status.AccessInfo = ""
 	default:
 		scope.Service.Status.State = appv1alpha1.ServiceStateInProgress
-		scope.Service.Status.AccessInfo = ""
 	}
-
-	scope.Service.Status.Message = fmt.Sprintf("vm health info from powervs service from ibm cloud. status: %s, reason: %s", pvmInstance.Health.Status, pvmInstance.Health.Reason)
 }
 
-func isVMExpired(scope *ControllerScope, pvmInstance *models.PVMInstance) bool {
+func isVMExpired(scope *ServiceScope, pvmInstance *models.PVMInstance) bool {
 	currentTime := time.Now()
-	if currentTime.After(scope.Service.Spec.Expiry.Time) {
-		return true
-	}
-
-	return false
+	return currentTime.After(scope.Service.Spec.Expiry.Time)
 }
 
-func cleanupVM(scope *ControllerScope) error {
+func cleanupVM(scope *ServiceScope) error {
 	return scope.PowerVSClient.DeleteVM(scope.Service.Status.VM.InstanceID)
 }
 
-func ReconcileVM(scope *ControllerScope) error {
+func ReconcileVM(scope *ServiceScope) error {
 	if scope.Service.Status.VM.InstanceID == "" {
 		if err := createVM(scope); err != nil {
 			return errors.Wrap(err, "error creating vm")
@@ -165,10 +191,22 @@ func ReconcileVM(scope *ControllerScope) error {
 		scope.Service.Status.AccessInfo = ""
 	}
 
+	// if vm is in error state, then cleanup the vm and recreate it
+	if !scope.Service.Status.Successful && scope.Service.Status.VM.State == "ERROR" {
+		scope.Logger.Info("VM in error state, hence running the cleanupvm", "name", scope.Service.ObjectMeta.Name)
+		scope.Service.Status.Message = "VM is in error state, hence recreating the vm"
+		if err = cleanupVM(scope); err != nil {
+			return errors.Wrap(err, "error cleaning up vm")
+		}
+		scope.Service.Status.AccessInfo = ""
+		scope.Service.Status.State = ""
+		scope.Service.Status.VM = appv1alpha1.VM{}
+	}
+
 	return nil
 }
 
-func ReconcileDeleteVM(scope *ControllerScope) (bool, error) {
+func ReconcileDeleteVM(scope *ServiceScope) (bool, error) {
 	if scope.Service.Status.VM.InstanceID == "" {
 		scope.Logger.Info("vm instanceID is empty, nothing to clean up")
 		return true, nil

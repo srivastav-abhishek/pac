@@ -47,7 +47,7 @@ type VM struct {
 }
 
 var VMAccessInfoTemplate = func(externalIP, internalIP string) string {
-	return fmt.Sprintf("VM can be accessed via ExternalIP: %s or InternalIP: %s, use any SSH pub key registered to SSH into the VM", externalIP, internalIP)
+	return fmt.Sprintf("VM can be accessed via ExternalIP: %s use any SSH pub key registered to SSH into the VM", externalIP)
 }
 
 // ServiceSpec defines the desired state of Service
@@ -73,6 +73,8 @@ type ServiceStatus struct {
 	Message string `json:"message,omitempty"`
 	// +kubebuilder:validation:Required
 	State ServiceState `json:"state,omitempty"`
+	// Successful indicates if the service was provisioned successfully
+	Successful bool `json:"successful,omitempty"`
 }
 
 //+kubebuilder:object:root=true
@@ -100,4 +102,8 @@ type ServiceList struct {
 
 func init() {
 	SchemeBuilder.Register(&Service{}, &ServiceList{})
+}
+
+func (s *ServiceStatus) SetSuccessful() {
+	s.Successful = true
 }

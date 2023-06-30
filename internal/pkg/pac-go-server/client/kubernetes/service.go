@@ -57,7 +57,7 @@ func (client KubeClient) DeleteService(name, userId string) error {
 	service := pac.Service{}
 	if err := client.kubeClient.Get(context.Background(), kClient.ObjectKey{Namespace: DefaultNamespace, Name: name}, &service); err != nil {
 		if apierrors.IsNotFound(err) {
-			return nil
+			return fmt.Errorf("service with name %s does not exist", name)
 		}
 		return fmt.Errorf("error getting the service with name %s Error: %v", name, err)
 	}
@@ -69,7 +69,7 @@ func (client KubeClient) DeleteService(name, userId string) error {
 	}
 	if err := client.kubeClient.Delete(context.Background(), &service); err != nil {
 		if apierrors.IsNotFound(err) {
-			return nil
+			return fmt.Errorf("service with name %s does not exist", name)
 		}
 		return fmt.Errorf("failed to delete service with name %s Error: %v", name, err)
 	}

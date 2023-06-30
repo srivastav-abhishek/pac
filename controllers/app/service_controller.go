@@ -63,20 +63,30 @@ func (r *ServiceReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 		return ctrl.Result{}, client.IgnoreNotFound(err)
 	}
 
-	serviceToBePatched := client.MergeFrom(service.DeepCopy())
-
-	defer func() {
-		if service.ObjectMeta.DeletionTimestamp.IsZero() {
-			if err := r.Status().Patch(ctx, service, serviceToBePatched); err != nil {
-				l.Error(err, "error updating service status")
-			}
-		}
-	}()
-
 	catalog := &appv1alpha1.Catalog{}
 	if err := r.Get(ctx, client.ObjectKey{Namespace: req.Namespace, Name: service.Spec.Catalog.Name}, catalog); err != nil {
 		return ctrl.Result{}, errors.Wrapf(err, "error retrieving catalog with name %s for service %s", service.Spec.Catalog.Name, service.Name)
 	}
+
+	scope, err := NewServiceScope(ctx, ServiceScopeParams{
+		ControllerScopeParams: ControllerScopeParams{
+			Type:    serviceController,
+			Client:  r.Client,
+			Logger:  l,
+			Debug:   r.Debug,
+			Catalog: catalog,
+		},
+		Service: service,
+	})
+	if err != nil {
+		return ctrl.Result{}, errors.Errorf("failed to create scope: %v", err)
+	}
+
+	defer func() {
+		if err := scope.PatchServiceObject(); err != nil {
+			l.Error(err, "error updating service status")
+		}
+	}()
 
 	// If the catalog is retired, we should not allow any new services to be created. Hence, we set the service state to error.
 	if service.Status.State != appv1alpha1.ServiceStateCreated && catalog.Spec.Retired {
@@ -98,18 +108,6 @@ func (r *ServiceReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 		Name:       catalog.Name,
 		UID:        catalog.UID,
 	})
-
-	scope, err := NewControllerScope(ctx, ControllerScopeParams{
-		Type:    serviceController,
-		Client:  r.Client,
-		Logger:  l,
-		Debug:   r.Debug,
-		Service: service,
-		Catalog: catalog,
-	})
-	if err != nil {
-		return ctrl.Result{}, errors.Errorf("failed to create scope: %v", err)
-	}
 
 	if scope.Service.ObjectMeta.DeletionTimestamp.IsZero() {
 		if !controllerutil.ContainsFinalizer(scope.Service, appv1alpha1.ServiceFinalizer) {
@@ -142,16 +140,14 @@ func (r *ServiceReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 		}
 	}
 
+	// If the service state is not set then set to new and return immediately
+	if service.Status.State == "" {
+		service.Status.State = appv1alpha1.ServiceStateNew
+		return ctrl.Result{}, nil
+	}
+
 	switch catalog.Spec.Type {
 	case appv1alpha1.CatalogTypeVM:
-		if scope.Service.Status.VM.InstanceID == "" {
-			scope.Service.Status.State = appv1alpha1.ServiceStateNew
-			if err = r.Status().Update(ctx, scope.Service); err != nil {
-				l.Error(err, "error updating service status")
-				return ctrl.Result{RequeueAfter: time.Minute * 1}, nil
-			}
-		}
-
 		if err = ReconcileVM(scope); err != nil {
 			err = errors.Wrap(err, "error reconciling vm service")
 			scope.Service.Status.State = appv1alpha1.ServiceStateError

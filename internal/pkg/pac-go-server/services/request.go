@@ -260,7 +260,7 @@ func ExitGroup(c *gin.Context) {
 	logger.Debug("fetched group", zap.Any("groups", grp))
 
 	if !kc.IsMemberOfGroup(grp.Name) {
-		logger.Debug("user is not member of group",  zap.String("user", username), zap.String("group", grp.Name))
+		logger.Debug("user is not member of group", zap.String("user", username), zap.String("group", grp.Name))
 		c.JSON(http.StatusBadRequest, gin.H{"error": "You are already not a member of this group."})
 		return
 	}

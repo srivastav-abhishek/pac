@@ -2,6 +2,7 @@ package powervs
 
 import (
 	"context"
+
 	"github.com/pkg/errors"
 
 	"github.com/IBM-Cloud/power-go-client/clients/instance"
@@ -77,6 +78,10 @@ func (s *Client) GetNetworks() (*models.Networks, error) {
 
 func (s *Client) GetNetwork(id string) (*models.Network, error) {
 	return s.networkClient.Get(id)
+}
+
+func (s *Client) CreateNetwork(body *models.NetworkCreate) (*models.Network, error) {
+	return s.networkClient.Create(body)
 }
 
 func (s *Client) CreateVM(opts *models.PVMInstanceCreate) (*models.PVMInstanceList, error) {
