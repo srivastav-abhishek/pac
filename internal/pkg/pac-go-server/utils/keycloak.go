@@ -90,7 +90,8 @@ func (k *KeyClockClient) GetGroups() ([]models.Group, error) {
 			ID:   *group.ID,
 		})
 	}
-	return groups, nil
+
+	return models.FilterExcludedGroups(groups), nil
 }
 
 func (k *KeyClockClient) GetGroup(id string) (*models.Group, error) {
