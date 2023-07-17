@@ -50,6 +50,7 @@ func GetCatalog(c *gin.Context) {
 }
 
 func CreateCatalog(c *gin.Context) {
+	originator := c.Request.Context().Value("userid").(string)
 	logger := log.GetLogger()
 	catalog := models.Catalog{}
 	if err := c.BindJSON(&catalog); err != nil {
@@ -68,11 +69,23 @@ func CreateCatalog(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("%v", err)})
 		return
 	}
+
+	event := models.NewEvent(originator, originator, models.EventCatalogCreate)
+
+	defer func() {
+		if err := dbCon.NewEvent(event); err != nil {
+			log.GetLogger().Error("failed to create event", zap.Error(err))
+		}
+	}()
+
+	event.SetLog(models.EventLogLevelINFO, fmt.Sprintf("Catalog %s created", catalog.Name))
+
 	logger.Debug("successfully created catalog")
 	c.Status(http.StatusCreated)
 }
 
 func DeleteCatalog(c *gin.Context) {
+	originator := c.Request.Context().Value("userid").(string)
 	logger := log.GetLogger()
 	catalogName := c.Param("name")
 	if catalogName == "" {
@@ -86,11 +99,21 @@ func DeleteCatalog(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("%v", err)})
 		return
 	}
+	event := models.NewEvent(originator, originator, models.EventCatalogDelete)
+
+	defer func() {
+		if err := dbCon.NewEvent(event); err != nil {
+			log.GetLogger().Error("failed to create event", zap.Error(err))
+		}
+	}()
+
+	event.SetLog(models.EventLogLevelINFO, fmt.Sprintf("Catalog %s deleted", catalogName))
 	logger.Debug("successfully deleted catalog", zap.String("catalog name", catalogName))
 	c.Status(http.StatusNoContent)
 }
 
 func RetireCatalog(c *gin.Context) {
+	originator := c.Request.Context().Value("userid").(string)
 	logger := log.GetLogger()
 	catalogName := c.Param("name")
 	if catalogName == "" {
@@ -104,6 +127,15 @@ func RetireCatalog(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("%v", err)})
 		return
 	}
+	event := models.NewEvent(originator, originator, models.EventCatalogRetire)
+
+	defer func() {
+		if err := dbCon.NewEvent(event); err != nil {
+			log.GetLogger().Error("failed to create event", zap.Error(err))
+		}
+	}()
+
+	event.SetLog(models.EventLogLevelINFO, fmt.Sprintf("Catalog %s retired", catalogName))
 	logger.Debug("successfully retired catalog", zap.String("catalog name", catalogName))
 	c.Status(http.StatusNoContent)
 }

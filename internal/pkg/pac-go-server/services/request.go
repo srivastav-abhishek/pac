@@ -62,6 +62,7 @@ func GetRequest(c *gin.Context) {
 }
 
 func UpdateServiceExpiryRequest(c *gin.Context) {
+	originator := c.Request.Context().Value("userid").(string)
 	logger := log.GetLogger()
 	var request = models.GetRequest()
 	userID := c.Request.Context().Value("userid").(string)
@@ -120,7 +121,7 @@ func UpdateServiceExpiryRequest(c *gin.Context) {
 	}
 
 	// insert the request into the database
-	if err := dbCon.NewRequest(&models.Request{
+	id, err := dbCon.NewRequest(&models.Request{
 		UserID:        userID,
 		CreatedAt:     time.Now(),
 		State:         models.RequestStateNew,
@@ -130,17 +131,30 @@ func UpdateServiceExpiryRequest(c *gin.Context) {
 			Name:   serviceName,
 			Expiry: request.ServiceExpiry.Expiry,
 		},
-	}); err != nil {
+	})
+	if err != nil {
 		logger.Error("failed to create request", zap.Error(err))
 		c.JSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("failed to insert the request into the db, err: %s", err.Error())})
 		return
 	}
+
+	event := models.NewEvent(userID, originator, models.EventServiceExpiryRequest)
+
+	defer func() {
+		if err := dbCon.NewEvent(event); err != nil {
+			log.GetLogger().Error("failed to create event", zap.Error(err))
+		}
+	}()
+
+	event.SetNotifiyBoth()
+	event.SetLog(models.EventLogLevelINFO, fmt.Sprintf("New Request submitted to change the expiry of the service, id: %s", id))
 
 	logger.Debug("successfully created request")
 	c.Status(http.StatusCreated)
 }
 
 func NewGroupRequest(c *gin.Context) {
+	originator := c.Request.Context().Value("userid").(string)
 	logger := log.GetLogger()
 
 	kc := utils.NewKeyClockClient(c.Request.Context())
@@ -200,7 +214,7 @@ func NewGroupRequest(c *gin.Context) {
 	}
 
 	// insert the request into the database
-	if err := dbCon.NewRequest(&models.Request{
+	id, err := dbCon.NewRequest(&models.Request{
 		UserID:        userID,
 		CreatedAt:     time.Now(),
 		State:         models.RequestStateNew,
@@ -210,12 +224,23 @@ func NewGroupRequest(c *gin.Context) {
 			GroupID:   groupID,
 			Group:     grp.Name,
 			Requester: username,
-		},
-	}); err != nil {
+		}})
+	if err != nil {
 		logger.Error("failed to create request", zap.Error(err))
 		c.JSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("failed to insert the request into the db, err: %s", err.Error())})
 		return
 	}
+
+	event := models.NewEvent(userID, originator, models.EventGroupJoinRequest)
+
+	defer func() {
+		if err := dbCon.NewEvent(event); err != nil {
+			log.GetLogger().Error("failed to create event", zap.Error(err))
+		}
+	}()
+
+	event.SetNotifiyBoth()
+	event.SetLog(models.EventLogLevelINFO, fmt.Sprintf("New Request(%s) has been submitted to add to the group: %s", id, grp.Name))
 
 	logger.Debug("successfully created request")
 	c.Status(http.StatusCreated)
@@ -285,7 +310,7 @@ func ExitGroup(c *gin.Context) {
 	}
 
 	// insert the request into the database
-	if err := dbCon.NewRequest(&models.Request{
+	id, err := dbCon.NewRequest(&models.Request{
 		UserID:        userID,
 		CreatedAt:     time.Now(),
 		State:         models.RequestStateNew,
@@ -296,17 +321,30 @@ func ExitGroup(c *gin.Context) {
 			Group:     grp.Name,
 			Requester: username,
 		},
-	}); err != nil {
+	})
+	if err != nil {
 		logger.Error("failed to create request", zap.Error(err))
 		c.JSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("failed to insert the request into the db, err: %s", err.Error())})
 		return
 	}
+
+	event := models.NewEvent(userID, userID, models.EventGroupExitRequest)
+
+	defer func() {
+		if err := dbCon.NewEvent(event); err != nil {
+			log.GetLogger().Error("failed to create event", zap.Error(err))
+		}
+	}()
+
+	event.SetNotifyAdmin()
+	event.SetLog(models.EventLogLevelINFO, fmt.Sprintf("Request has been submitted for exiting the group, id: %s", id))
 
 	logger.Debug("successfully created request")
 	c.Status(http.StatusCreated)
 }
 
 func ApproveRequest(c *gin.Context) {
+	originator := c.Request.Context().Value("userid").(string)
 	logger := log.GetLogger()
 	kc := utils.NewKeyClockClient(c.Request.Context())
 	if !kc.IsRole(utils.ManagerRole) {
@@ -350,11 +388,22 @@ func ApproveRequest(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("failed to update the state field in the db, err: %s", err.Error())})
 		return
 	}
+	event := models.NewEvent(request.UserID, originator, models.EventTypeRequestApproved)
+
+	defer func() {
+		if err := dbCon.NewEvent(event); err != nil {
+			log.GetLogger().Error("failed to create event", zap.Error(err))
+		}
+	}()
+
+	event.SetNotify()
+	event.SetLog(models.EventLogLevelINFO, fmt.Sprintf("Request has been successfully approved, id: %s", request.ID.Hex()))
 	logger.Debug("successfully approved request", zap.String("id", id))
 	c.Status(http.StatusNoContent)
 }
 
 func RejectRequest(c *gin.Context) {
+	originator := c.Request.Context().Value("userid").(string)
 	logger := log.GetLogger()
 	kc := utils.NewKeyClockClient(c.Request.Context())
 	if !kc.IsRole(utils.ManagerRole) {
@@ -396,11 +445,22 @@ func RejectRequest(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("failed to update the state field in the db, err: %s", err.Error())})
 		return
 	}
+	event := models.NewEvent(req.UserID, originator, models.EventTypeRequestRejected)
+
+	defer func() {
+		if err := dbCon.NewEvent(event); err != nil {
+			log.GetLogger().Error("failed to create event", zap.Error(err))
+		}
+	}()
+
+	event.SetNotify()
+	event.SetLog(models.EventLogLevelINFO, fmt.Sprintf("Request has been rejected, id: %s", request.ID.Hex()))
 	logger.Debug("successfully rejected request", zap.String("id", id))
 	c.Status(http.StatusNoContent)
 }
 
 func DeleteRequest(c *gin.Context) {
+	originator := c.Request.Context().Value("userid").(string)
 	logger := log.GetLogger()
 	id := c.Param("id")
 	request, err := dbCon.GetRequestByID(id)
@@ -425,6 +485,15 @@ func DeleteRequest(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("failed to delete the record from the db, err: %s", err.Error())})
 		return
 	}
+	event := models.NewEvent(request.UserID, originator, models.EventTypeRequestDeleted)
+
+	defer func() {
+		if err := dbCon.NewEvent(event); err != nil {
+			log.GetLogger().Error("failed to create event", zap.Error(err))
+		}
+	}()
+
+	event.SetLog(models.EventLogLevelINFO, fmt.Sprintf("Request has been deleted, id: %s", request.ID.Hex()))
 	logger.Debug("successfully deleted request", zap.String("id", id))
 	c.Status(http.StatusNoContent)
 }

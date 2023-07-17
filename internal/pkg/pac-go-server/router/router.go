@@ -102,5 +102,7 @@ func CreateRouter() *gin.Engine {
 	// list user quota
 	authorized.GET("/quota", services.GetUserQuota)
 
+	authorized.GET("/events", services.GetEvents)
+
 	return router
 }

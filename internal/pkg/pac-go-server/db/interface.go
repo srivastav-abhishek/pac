@@ -9,7 +9,7 @@ type DB interface {
 	Disconnect() error
 
 	GetRequestsByUserID(id, requestType string) ([]models.Request, error)
-	NewRequest(request *models.Request) error
+	NewRequest(request *models.Request) (string, error)
 	GetRequestByGroupIDAndUserID(groupID, userID string) ([]models.Request, error)
 	GetRequestByID(string) (*models.Request, error)
 	DeleteRequest(string) error
@@ -28,4 +28,7 @@ type DB interface {
 	DeleteQuota(string) error
 	GetQuotaForGroupID(string) (*models.Quota, error)
 	GetGroupsQuota([]string) ([]models.Quota, error)
+
+	NewEvent(*models.Event) error
+	GetEventsByUserID(string) ([]models.Event, error)
 }

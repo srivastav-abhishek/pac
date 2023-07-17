@@ -39,16 +39,21 @@ func (db *MongoDB) GetRequestsByUserID(id, requestType string) ([]models.Request
 	return requests, nil
 }
 
-func (db *MongoDB) NewRequest(request *models.Request) error {
+func (db *MongoDB) NewRequest(request *models.Request) (string, error) {
 	collection := db.Database.Collection("requests")
 	ctx, cancel := context.WithTimeout(context.Background(), dbContextTimeout)
 	defer cancel()
-	_, err := collection.InsertOne(ctx, request)
+	res, err := collection.InsertOne(ctx, request)
 	if err != nil {
-		return fmt.Errorf("error inserting request: %w", err)
+		return "", fmt.Errorf("error inserting request: %w", err)
 	}
 
-	return nil
+	oid, ok := res.InsertedID.(primitive.ObjectID)
+	if !ok {
+		return "", errors.New("unable to get inserted id for request")
+	}
+
+	return oid.Hex(), nil
 }
 
 func (db *MongoDB) GetRequestByGroupIDAndUserID(groupID string, userID string) ([]models.Request, error) {
