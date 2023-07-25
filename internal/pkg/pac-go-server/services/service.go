@@ -14,6 +14,7 @@ import (
 	utilrand "k8s.io/apimachinery/pkg/util/rand"
 
 	pac "github.com/PDeXchange/pac/apis/app/v1alpha1"
+	"github.com/PDeXchange/pac/internal/pkg/pac-go-server/client"
 	"github.com/PDeXchange/pac/internal/pkg/pac-go-server/client/kubernetes"
 	"github.com/PDeXchange/pac/internal/pkg/pac-go-server/db"
 	log "github.com/PDeXchange/pac/internal/pkg/pac-go-server/logger"
@@ -39,7 +40,7 @@ func GetAllServices(c *gin.Context) {
 	var services pac.ServiceList
 	var err error
 
-	kc := utils.NewKeyClockClient(c.Request.Context())
+	kc := client.NewKeyClockClient(c.Request.Context())
 	userId := kc.GetUserID()
 
 	listAllServices := c.DefaultQuery("all", "false")
@@ -81,7 +82,7 @@ func GetService(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("%v", err)})
 		return
 	}
-	kc := utils.NewKeyClockClient(c.Request.Context())
+	kc := client.NewKeyClockClient(c.Request.Context())
 	userId := kc.GetUserID()
 
 	// should not return service if the user is not admin or not owner of service
@@ -137,7 +138,7 @@ func CreateService(c *gin.Context) {
 	}
 
 	// fetch userId
-	kc := utils.NewKeyClockClient(c.Request.Context())
+	kc := client.NewKeyClockClient(c.Request.Context())
 	userId := kc.GetUserID()
 	logger.Debug("user id", zap.String("userid", userId))
 
@@ -224,7 +225,7 @@ func DeleteService(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "service name is not set"})
 		return
 	}
-	kc := utils.NewKeyClockClient(c.Request.Context())
+	kc := client.NewKeyClockClient(c.Request.Context())
 	userId := kc.GetUserID()
 
 	//allow admin to delete the not owned services as well

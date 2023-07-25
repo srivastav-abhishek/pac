@@ -3,9 +3,13 @@ package mongodb
 import (
 	"context"
 	"fmt"
+	"log"
+	"time"
 
 	"github.com/PDeXchange/pac/internal/pkg/pac-go-server/models"
 	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/bson/primitive"
+	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
@@ -54,4 +58,70 @@ func (db *MongoDB) GetEventsByUserID(id string, startIndex, perPage int64) ([]mo
 	}
 
 	return events, totalCount, nil
+}
+
+// WatchEvents watches the events collection for changes
+func (db *MongoDB) WatchEvents(eventCh chan<- *models.Event) error {
+	collection := db.Database.Collection("events")
+	cursorOptions := options.Find().SetCursorType(options.TailableAwait).SetMaxAwaitTime(2 * time.Second)
+
+	for {
+		// Create a new cursor for each iteration to handle possible cursor timeouts
+		cursor, err := collection.Find(context.Background(), bson.D{}, cursorOptions)
+		if err != nil {
+			return fmt.Errorf("error creating cursor: %w", err)
+		}
+
+		// Process the change events
+		for cursor.Next(context.Background()) {
+			var event models.Event
+			if err := cursor.Decode(&event); err != nil {
+				log.Println("Error decoding event:", err)
+				continue
+			}
+
+			eventCh <- &event
+		}
+
+		if err := cursor.Err(); err != nil {
+			return fmt.Errorf("error reading cursor: %w", err)
+		}
+
+		// Close the cursor
+		if err := cursor.Close(context.Background()); err != nil {
+			return fmt.Errorf("error closing cursor: %w", err)
+		}
+
+		// Sleep for a while before checking for new changes
+		time.Sleep(5 * time.Second)
+	}
+}
+
+// MarkEventAsNotified marks the event as notified
+func (db *MongoDB) MarkEventAsNotified(id string) error {
+	event := models.Event{}
+	if id == "" {
+		return fmt.Errorf("id cannot be empty")
+	}
+	objectId, err := primitive.ObjectIDFromHex(id)
+	if err != nil {
+		return fmt.Errorf("invalid id: %w", err)
+	}
+	filter := bson.M{"_id": objectId}
+
+	collection := db.Database.Collection("events")
+	ctx, cancel := context.WithTimeout(context.Background(), dbContextTimeout)
+	defer cancel()
+	if err := collection.FindOne(ctx, filter).Decode(&event); err != nil && err != mongo.ErrNoDocuments {
+		return fmt.Errorf("error getting event: %w", err)
+	} else if err == mongo.ErrNoDocuments {
+		return fmt.Errorf("event not found with id: %s, err : %w", id, err)
+	}
+
+	if _, err := collection.UpdateOne(ctx, bson.M{"_id": objectId},
+		bson.D{{Key: "$set", Value: bson.D{{Key: "notified", Value: true}}}}); err != nil {
+		return fmt.Errorf("error while updating event: %w", err)
+	}
+
+	return nil
 }

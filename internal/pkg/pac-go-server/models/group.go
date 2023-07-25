@@ -1,5 +1,7 @@
 package models
 
+import "context"
+
 // ExcludeGroups is a list of groups to exclude from the list of groups
 var ExcludeGroups []string
 
@@ -11,23 +13,12 @@ type Group struct {
 	Quota      Capacity `json:"quota"`
 }
 
-// isExcludedGroup checks if the group is in the list of excluded groups
-func isExcludedGroup(group string) bool {
-	for _, excludedGroup := range ExcludeGroups {
-		if group == excludedGroup {
+func IsMemberOfGroup(ctx context.Context, name string) bool {
+	groups := ctx.Value("groups").([]Group)
+	for _, group := range groups {
+		if group.Name == name {
 			return true
 		}
 	}
 	return false
-}
-
-// FilterExcludedGroups filters out groups that are excluded
-func FilterExcludedGroups(groups []Group) []Group {
-	var filteredGroups []Group
-	for _, group := range groups {
-		if !isExcludedGroup(group.Name) {
-			filteredGroups = append(filteredGroups, group)
-		}
-	}
-	return filteredGroups
 }

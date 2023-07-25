@@ -70,7 +70,12 @@ func CreateCatalog(c *gin.Context) {
 		return
 	}
 
-	event := models.NewEvent(originator, originator, models.EventCatalogCreate)
+	event, err := models.NewEvent(c.Request.Context(), originator, originator, models.EventCatalogCreate)
+	if err != nil {
+		logger.Error("failed to create event", zap.Error(err))
+		c.JSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("%v", err)})
+		return
+	}
 
 	defer func() {
 		if err := dbCon.NewEvent(event); err != nil {
@@ -99,7 +104,12 @@ func DeleteCatalog(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("%v", err)})
 		return
 	}
-	event := models.NewEvent(originator, originator, models.EventCatalogDelete)
+	event, err := models.NewEvent(c.Request.Context(), originator, originator, models.EventCatalogDelete)
+	if err != nil {
+		logger.Error("failed to create event", zap.Error(err))
+		c.JSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("%v", err)})
+		return
+	}
 
 	defer func() {
 		if err := dbCon.NewEvent(event); err != nil {
@@ -127,7 +137,12 @@ func RetireCatalog(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("%v", err)})
 		return
 	}
-	event := models.NewEvent(originator, originator, models.EventCatalogRetire)
+	event, err := models.NewEvent(c.Request.Context(), originator, originator, models.EventCatalogRetire)
+	if err != nil {
+		logger.Error("failed to create event", zap.Error(err))
+		c.JSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("%v", err)})
+		return
+	}
 
 	defer func() {
 		if err := dbCon.NewEvent(event); err != nil {

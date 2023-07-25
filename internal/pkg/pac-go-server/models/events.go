@@ -2,9 +2,11 @@ package models
 
 import (
 	"bytes"
+	"context"
 	"html/template"
 	"time"
 
+	"github.com/PDeXchange/pac/internal/pkg/pac-go-server/client"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
@@ -44,6 +46,8 @@ type Event struct {
 	Originator string `json:"originator" bson:"originator"`
 	// UserID is the user that the event is about
 	UserID string `json:"user_id" bson:"user_id"`
+	// UserEmail is the user email that the event is about
+	UserEmail string `json:"user_email" bson:"user_email"`
 	// Notify is a flag to indicate if the user should be notified
 	Notify bool `json:"notify" bson:"notify"`
 	// NotifyAdmin is a flag to indicate if the admin should be notified
@@ -70,14 +74,32 @@ type EventResponse struct {
 	Links Links `json:"links"`
 }
 
-func NewEvent(userid, originator string, typ EventType) *Event {
+func NewEvent(ctx context.Context, userid, originator string, typ EventType) (*Event, error) {
+	email := ""
+	// if originator is not the same as userid, then the event is created by an admin, hence get the user info for the supplied userid
+	if originator != userid {
+		user, err := client.NewKeyClockClient(ctx).GetUser(userid)
+		if err != nil {
+			return nil, err
+		}
+		email = *user.Email
+	} else {
+		// Get user info for the token in the context for the non-admin user
+		usr, err := client.NewKeyClockClient(ctx).GetUserInfo()
+		if err != nil {
+			return nil, err
+		}
+		email = *usr.Email
+	}
+
 	return &Event{
 		Type:      typ,
 		CreatedAt: time.Now(),
 
 		UserID:     userid,
+		UserEmail:  email,
 		Originator: originator,
-	}
+	}, nil
 }
 
 // SetType sets the event type
@@ -120,10 +142,13 @@ func (e *Event) SetLog(level EventLogLevel, message string) {
 
 var bodyTemplate = `
 {{- if .Log.Message -}}
-Hi {{ .UserID }},
+Hi,
 
 {{ .Log.Message }}
 
+Please visit the PAC portal for more details.
+
+Note: This is an auto-generated email. Please do not reply to this email.
 Generated at: {{ .CreatedAt.Format "Jan 02, 2006 15:04:05 UTC" }}
 
 Thanks,

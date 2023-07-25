@@ -9,6 +9,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"go.uber.org/zap"
 
+	"github.com/PDeXchange/pac/internal/pkg/pac-go-server/client"
 	log "github.com/PDeXchange/pac/internal/pkg/pac-go-server/logger"
 	"github.com/PDeXchange/pac/internal/pkg/pac-go-server/models"
 	"github.com/PDeXchange/pac/internal/pkg/pac-go-server/utils"
@@ -16,7 +17,7 @@ import (
 
 func GetAllRequests(c *gin.Context) {
 	logger := log.GetLogger()
-	kc := utils.NewKeyClockClient(c.Request.Context())
+	kc := client.NewKeyClockClient(c.Request.Context())
 	var requests []models.Request
 	var err error
 
@@ -138,7 +139,12 @@ func UpdateServiceExpiryRequest(c *gin.Context) {
 		return
 	}
 
-	event := models.NewEvent(userID, originator, models.EventServiceExpiryRequest)
+	event, err := models.NewEvent(c.Request.Context(), userID, originator, models.EventServiceExpiryRequest)
+	if err != nil {
+		logger.Error("failed to create event", zap.Error(err))
+		c.JSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("failed to create event, err: %s", err.Error())})
+		return
+	}
 
 	defer func() {
 		if err := dbCon.NewEvent(event); err != nil {
@@ -157,7 +163,6 @@ func NewGroupRequest(c *gin.Context) {
 	originator := c.Request.Context().Value("userid").(string)
 	logger := log.GetLogger()
 
-	kc := utils.NewKeyClockClient(c.Request.Context())
 	var request = models.GetRequest()
 	// get the authenticated user's username and ID
 	username := c.Request.Context().Value("username").(string)
@@ -179,20 +184,20 @@ func NewGroupRequest(c *gin.Context) {
 
 	// check if the user is already a member of the group
 	groupID := c.Param("id")
-	grp, err := kc.GetGroup(groupID)
-	if err != nil && err != utils.ErrorGroupNotFound {
+	grp, err := getGroup(c.Request.Context(), groupID)
+	if err != nil && err != client.ErrorGroupNotFound {
 		logger.Error("failed to get groups", zap.String("group id", groupID), zap.Error(err))
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
-	} else if err == utils.ErrorGroupNotFound {
+	} else if err == client.ErrorGroupNotFound {
 		logger.Error("group not found", zap.String("group id", groupID))
 		c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
 		return
 	}
 	logger.Debug("fetched group", zap.Any("groups", grp))
 
-	if kc.IsMemberOfGroup(grp.Name) {
-		logger.Debug("user is already member of group", zap.String("group", grp.Name))
+	if models.IsMemberOfGroup(c.Request.Context(), *grp.Name) {
+		logger.Debug("user is already member of group", zap.String("group", *grp.Name))
 		c.JSON(http.StatusBadRequest, gin.H{"error": "You are already a member of this group."})
 		return
 	}
@@ -207,7 +212,7 @@ func NewGroupRequest(c *gin.Context) {
 	logger.Debug("fetched request", zap.Any("request", r))
 	for _, request := range r {
 		if request.State == models.RequestStateNew {
-			logger.Debug("user is already requested access to this group", zap.String("group", grp.Name), zap.Any("request", r))
+			logger.Debug("user is already requested access to this group", zap.String("group", *grp.Name), zap.Any("request", r))
 			c.JSON(http.StatusBadRequest, gin.H{"error": "You have already requested access to this group."})
 			return
 		}
@@ -222,7 +227,7 @@ func NewGroupRequest(c *gin.Context) {
 		RequestType:   models.RequestAddToGroup,
 		GroupAdmission: &models.GroupAdmission{
 			GroupID:   groupID,
-			Group:     grp.Name,
+			Group:     *grp.Name,
 			Requester: username,
 		}})
 	if err != nil {
@@ -231,7 +236,12 @@ func NewGroupRequest(c *gin.Context) {
 		return
 	}
 
-	event := models.NewEvent(userID, originator, models.EventGroupJoinRequest)
+	event, err := models.NewEvent(c.Request.Context(), userID, originator, models.EventGroupJoinRequest)
+	if err != nil {
+		logger.Error("failed to create event", zap.Error(err))
+		c.JSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("failed to create event, err: %s", err.Error())})
+		return
+	}
 
 	defer func() {
 		if err := dbCon.NewEvent(event); err != nil {
@@ -240,7 +250,7 @@ func NewGroupRequest(c *gin.Context) {
 	}()
 
 	event.SetNotifiyBoth()
-	event.SetLog(models.EventLogLevelINFO, fmt.Sprintf("New Request(%s) has been submitted to add to the group: %s", id, grp.Name))
+	event.SetLog(models.EventLogLevelINFO, fmt.Sprintf("New Request(%s) has been submitted to add to the group: %s", id, *grp.Name))
 
 	logger.Debug("successfully created request")
 	c.Status(http.StatusCreated)
@@ -248,8 +258,6 @@ func NewGroupRequest(c *gin.Context) {
 
 func ExitGroup(c *gin.Context) {
 	logger := log.GetLogger()
-
-	kc := utils.NewKeyClockClient(c.Request.Context())
 
 	var request = models.GetRequest()
 	// get the authenticated user's username and ID
@@ -272,20 +280,20 @@ func ExitGroup(c *gin.Context) {
 
 	// check if the user is already a member of the group
 	groupID := c.Param("id")
-	grp, err := kc.GetGroup(groupID)
-	if err != nil && err != utils.ErrorGroupNotFound {
+	grp, err := getGroup(c.Request.Context(), groupID)
+	if err != nil && err != client.ErrorGroupNotFound {
 		logger.Error("failed to get groups", zap.String("group id", groupID), zap.Error(err))
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
-	} else if err == utils.ErrorGroupNotFound {
+	} else if err == client.ErrorGroupNotFound {
 		logger.Error("group not found", zap.String("group id", groupID))
 		c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
 		return
 	}
 	logger.Debug("fetched group", zap.Any("groups", grp))
 
-	if !kc.IsMemberOfGroup(grp.Name) {
-		logger.Debug("user is not member of group", zap.String("user", username), zap.String("group", grp.Name))
+	if !models.IsMemberOfGroup(c.Request.Context(), *grp.Name) {
+		logger.Debug("user is not member of group", zap.String("user", username), zap.String("group", *grp.Name))
 		c.JSON(http.StatusBadRequest, gin.H{"error": "You are already not a member of this group."})
 		return
 	}
@@ -303,7 +311,7 @@ func ExitGroup(c *gin.Context) {
 			continue
 		}
 		if request.State == models.RequestStateNew {
-			logger.Debug("user is already requested to exit form this group", zap.String("group", grp.Name), zap.Any("request", r))
+			logger.Debug("user is already requested to exit form this group", zap.String("group", *grp.Name), zap.Any("request", r))
 			c.JSON(http.StatusBadRequest, gin.H{"error": "You have already requested to exit from this group."})
 			return
 		}
@@ -318,7 +326,7 @@ func ExitGroup(c *gin.Context) {
 		RequestType:   models.RequestExitFromGroup,
 		GroupAdmission: &models.GroupAdmission{
 			GroupID:   groupID,
-			Group:     grp.Name,
+			Group:     *grp.Name,
 			Requester: username,
 		},
 	})
@@ -328,7 +336,12 @@ func ExitGroup(c *gin.Context) {
 		return
 	}
 
-	event := models.NewEvent(userID, userID, models.EventGroupExitRequest)
+	event, err := models.NewEvent(c.Request.Context(), userID, userID, models.EventGroupExitRequest)
+	if err != nil {
+		logger.Error("failed to create event", zap.Error(err))
+		c.JSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("failed to create event, err: %s", err.Error())})
+		return
+	}
 
 	defer func() {
 		if err := dbCon.NewEvent(event); err != nil {
@@ -346,7 +359,7 @@ func ExitGroup(c *gin.Context) {
 func ApproveRequest(c *gin.Context) {
 	originator := c.Request.Context().Value("userid").(string)
 	logger := log.GetLogger()
-	kc := utils.NewKeyClockClient(c.Request.Context())
+	kc := client.NewKeyClockClient(c.Request.Context())
 	if !kc.IsRole(utils.ManagerRole) {
 		logger.Error("only admin can approve the requests")
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "You do not have permission to approve requests."})
@@ -363,14 +376,14 @@ func ApproveRequest(c *gin.Context) {
 	logger.Debug("fetched request", zap.Any("request", request))
 	switch request.RequestType {
 	case models.RequestAddToGroup:
-		if err := utils.NewKeyClockClient(c.Request.Context()).AddUserToGroup(request.UserID, request.GroupAdmission.GroupID); err != nil {
+		if err := client.NewKeyClockClient(c.Request.Context()).AddUserToGroup(request.UserID, request.GroupAdmission.GroupID); err != nil {
 			logger.Error("failed to add user to group", zap.String("user id", request.UserID),
 				zap.String("group id", request.GroupAdmission.GroupID), zap.Error(err))
 			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 			return
 		}
 	case models.RequestExitFromGroup:
-		if err := utils.NewKeyClockClient(c.Request.Context()).DeleteUserFromGroup(request.UserID, request.GroupAdmission.GroupID); err != nil {
+		if err := client.NewKeyClockClient(c.Request.Context()).DeleteUserFromGroup(request.UserID, request.GroupAdmission.GroupID); err != nil {
 			logger.Error("failed to remove user from group", zap.String("user id", request.UserID),
 				zap.String("group id", request.GroupAdmission.GroupID), zap.Error(err))
 			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
@@ -388,7 +401,12 @@ func ApproveRequest(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("failed to update the state field in the db, err: %s", err.Error())})
 		return
 	}
-	event := models.NewEvent(request.UserID, originator, models.EventTypeRequestApproved)
+	event, err := models.NewEvent(c.Request.Context(), request.UserID, originator, models.EventTypeRequestApproved)
+	if err != nil {
+		logger.Error("failed to create event", zap.Error(err))
+		c.JSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("failed to create event, err: %s", err.Error())})
+		return
+	}
 
 	defer func() {
 		if err := dbCon.NewEvent(event); err != nil {
@@ -405,7 +423,7 @@ func ApproveRequest(c *gin.Context) {
 func RejectRequest(c *gin.Context) {
 	originator := c.Request.Context().Value("userid").(string)
 	logger := log.GetLogger()
-	kc := utils.NewKeyClockClient(c.Request.Context())
+	kc := client.NewKeyClockClient(c.Request.Context())
 	if !kc.IsRole(utils.ManagerRole) {
 		logger.Error("only admin can approve the requests")
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "You do not have permission to reject requests."})
@@ -445,7 +463,12 @@ func RejectRequest(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("failed to update the state field in the db, err: %s", err.Error())})
 		return
 	}
-	event := models.NewEvent(req.UserID, originator, models.EventTypeRequestRejected)
+	event, err := models.NewEvent(c.Request.Context(), req.UserID, originator, models.EventTypeRequestRejected)
+	if err != nil {
+		logger.Error("failed to create event", zap.Error(err))
+		c.JSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("failed to create event, err: %s", err.Error())})
+		return
+	}
 
 	defer func() {
 		if err := dbCon.NewEvent(event); err != nil {
@@ -470,7 +493,7 @@ func DeleteRequest(c *gin.Context) {
 		return
 	}
 	logger.Debug("fetched request", zap.Any("request", request))
-	kc := utils.NewKeyClockClient(c.Request.Context())
+	kc := client.NewKeyClockClient(c.Request.Context())
 	userID := kc.GetUserID()
 
 	// request can be deleted by user who created request or admin can delete
@@ -485,7 +508,12 @@ func DeleteRequest(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("failed to delete the record from the db, err: %s", err.Error())})
 		return
 	}
-	event := models.NewEvent(request.UserID, originator, models.EventTypeRequestDeleted)
+	event, err := models.NewEvent(c.Request.Context(), request.UserID, originator, models.EventTypeRequestDeleted)
+	if err != nil {
+		logger.Error("failed to create event", zap.Error(err))
+		c.JSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("failed to create event, err: %s", err.Error())})
+		return
+	}
 
 	defer func() {
 		if err := dbCon.NewEvent(event); err != nil {

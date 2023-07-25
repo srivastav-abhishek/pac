@@ -13,6 +13,10 @@ var (
 	errInvalidCPUMultiple = errors.New("the CPU cores that can be provisoned on PowerVC is multiples of 0.25")
 )
 
+const (
+	ManagerRole = "manager"
+)
+
 func CastStrToFloat(val string) (float64, error) {
 	return strconv.ParseFloat(val, 64)
 }

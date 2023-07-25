@@ -9,6 +9,7 @@ import (
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.uber.org/zap"
 
+	"github.com/PDeXchange/pac/internal/pkg/pac-go-server/client"
 	log "github.com/PDeXchange/pac/internal/pkg/pac-go-server/logger"
 	"github.com/PDeXchange/pac/internal/pkg/pac-go-server/models"
 	"github.com/PDeXchange/pac/internal/pkg/pac-go-server/utils"
@@ -164,11 +165,11 @@ func DeleteQuota(c *gin.Context) {
 // checkGroupExists : Check if the group exists first before
 func checkGroupExists(c *gin.Context, gid string) error {
 	logger := log.GetLogger()
-	_, err := utils.NewKeyClockClient(c.Request.Context()).GetGroup(gid)
-	if err != nil && err != utils.ErrorGroupNotFound {
+	_, err := getGroup(c.Request.Context(), gid)
+	if err != nil && err != client.ErrorGroupNotFound {
 		logger.Error("error while retriving groupID from keycloak", zap.String("id", gid), zap.Error(err))
 		return err
-	} else if err == utils.ErrorGroupNotFound {
+	} else if err == client.ErrorGroupNotFound {
 		logger.Error("no group exists in keycloak", zap.String("id", gid))
 		return err
 	}
@@ -179,7 +180,7 @@ func GetUserQuota(c *gin.Context) {
 	logger := log.GetLogger()
 	var userQuota, usedQuota, availableQuota models.Capacity
 	var err error
-	kc := utils.NewKeyClockClient(c.Request.Context())
+	kc := client.NewKeyClockClient(c.Request.Context())
 	userID := kc.GetUserID()
 	userQuota, err = getUserQuota(c)
 	if err != nil {
@@ -228,10 +229,10 @@ func getMaxCapacity(quotas []models.Quota) models.Capacity {
 func getUserQuota(c *gin.Context) (models.Capacity, error) {
 	logger := log.GetLogger()
 	var userQuota models.Capacity
-	kc := utils.NewKeyClockClient(c.Request.Context())
+	kc := client.NewKeyClockClient(c.Request.Context())
 	userID := kc.GetUserID()
 	logger.Debug("getting quota for user", zap.String("user id", userID))
-	userGroups := kc.GetUserGroups()
+	userGroups := c.Request.Context().Value("groups").([]models.Group)
 	logger.Debug("user groups", zap.Any("user groups", userGroups))
 
 	if len(userGroups) == 0 {

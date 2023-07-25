@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net/http"
 
+	"github.com/PDeXchange/pac/internal/pkg/pac-go-server/client"
 	"github.com/PDeXchange/pac/internal/pkg/pac-go-server/models"
 	"github.com/PDeXchange/pac/internal/pkg/pac-go-server/utils"
 	"github.com/gin-gonic/gin"
@@ -12,7 +13,7 @@ import (
 
 // Get the Key values and update.
 func GetAllKeys(c *gin.Context) {
-	kc := utils.NewKeyClockClient(c.Request.Context())
+	kc := client.NewKeyClockClient(c.Request.Context())
 
 	var userID string
 	if !kc.IsRole(utils.ManagerRole) {
@@ -73,7 +74,7 @@ func CreateKey(c *gin.Context) {
 func DeleteKey(c *gin.Context) {
 	id := c.Param("id")
 	key, err := dbCon.GetKeyByID(id)
-	kc := utils.NewKeyClockClient(c.Request.Context())
+	kc := client.NewKeyClockClient(c.Request.Context())
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("failed to fetch the requested record from the db, err: %s", err.Error())})
 		return

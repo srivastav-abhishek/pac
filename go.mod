@@ -2,7 +2,7 @@ module github.com/PDeXchange/pac
 
 go 1.19
 
-replace github.com/Nerzal/gocloak/v13 => github.com/PDeXchange/gocloak/v13 v13.3.0-p1
+replace github.com/Nerzal/gocloak/v13 => github.com/PDeXchange/gocloak/v13 v13.7.0-p1
 
 require (
 	github.com/IBM-Cloud/power-go-client v1.2.2
@@ -17,6 +17,9 @@ require (
 	github.com/onsi/gomega v1.24.1
 	github.com/pkg/errors v0.9.1
 	github.com/ppc64le-cloud/manageiq-client-go v0.0.0-20230320063610-157d6ef06ba5
+	github.com/sendgrid/rest v2.6.9+incompatible
+	github.com/sendgrid/sendgrid-go v3.12.0+incompatible
+	github.com/spf13/pflag v1.0.5
 	github.com/tbaehler/gin-keycloak v1.4.0
 	go.mongodb.org/mongo-driver v1.10.0
 	go.uber.org/zap v1.21.0
@@ -101,7 +104,6 @@ require (
 	github.com/prometheus/common v0.37.0 // indirect
 	github.com/prometheus/procfs v0.8.0 // indirect
 	github.com/segmentio/ksuid v1.0.4 // indirect
-	github.com/spf13/pflag v1.0.5 // indirect
 	github.com/twitchyliquid64/golang-asm v0.15.1 // indirect
 	github.com/ugorji/go/codec v1.2.11 // indirect
 	github.com/xdg-go/pbkdf2 v1.0.0 // indirect
