@@ -30,5 +30,5 @@ type DB interface {
 	GetGroupsQuota([]string) ([]models.Quota, error)
 
 	NewEvent(*models.Event) error
-	GetEventsByUserID(string) ([]models.Event, error)
+	GetEventsByUserID(string, int64, int64) ([]models.Event, int64, error)
 }

@@ -59,6 +59,17 @@ type EventLog struct {
 	Message string        `json:"message" bson:"message"`
 }
 
+type EventResponse struct {
+	// TotalPages is the total number of pages
+	TotalPages int64 `json:"total_pages"`
+	// TotalItems is the total number of items
+	TotalItems int64 `json:"total_items"`
+	// Events is the list of events
+	Events []Event `json:"events"`
+	// Links contains the links for the current page, next page and last page
+	Links Links `json:"links"`
+}
+
 func NewEvent(userid, originator string, typ EventType) *Event {
 	return &Event{
 		Type:      typ,
