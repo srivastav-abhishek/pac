@@ -22,7 +22,10 @@ import (
 	"github.com/PDeXchange/pac/internal/pkg/pac-go-server/utils"
 )
 
-const maxServiceNameLength = 50
+const (
+	maxServiceNameLength = 50
+	durationCoupleDays   = -48
+)
 
 var dbCon db.DB
 var kubeClient kubernetes.Client
@@ -215,6 +218,28 @@ func CreateService(c *gin.Context) {
 	}
 	logger.Debug("successfully created service")
 	c.Status(http.StatusCreated)
+
+	// Raise expiry notification for the service created whenever service is about to be expired
+	go raiseNotification(c, service.Name, service.Expiry)
+}
+
+// raiseNotification raises mail notification whenever service is about to expire
+func raiseNotification(c *gin.Context, serviceName string, serviceExpiry time.Time) {
+	logger := log.GetLogger()
+	coupleDaysAgo := serviceExpiry.Add(durationCoupleDays * time.Hour)
+	time.Sleep(time.Until(coupleDaysAgo))
+	service, err := kubeClient.GetService(serviceName)
+	if err != nil {
+		logger.Error("service not found, not raising expiry notification", zap.String("service name", serviceName), zap.Error(err))
+		return
+	}
+	serviceConverted := convertToService(service)
+	event, err := models.NewEvent(c, serviceConverted.UserID, serviceConverted.UserID, models.EventServiceExpiryNotification)
+	if err != nil {
+		logger.Error("failed to create event", zap.Error(err))
+		return
+	}
+	event.SetLog(models.EventLogLevelINFO, fmt.Sprintf("Expiry notification created for service:", service.Name))
 }
 
 func DeleteService(c *gin.Context) {

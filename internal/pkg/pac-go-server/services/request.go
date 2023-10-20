@@ -395,6 +395,7 @@ func ApproveRequest(c *gin.Context) {
 			c.JSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("%v", err)})
 			return
 		}
+		go raiseNotification(c, request.ServiceExpiry.Name, request.ServiceExpiry.Expiry)
 	}
 	if err := dbCon.UpdateRequestState(id, models.RequestStateApproved); err != nil {
 		logger.Error("failed to update request status in database", zap.String("id", id), zap.Error(err))

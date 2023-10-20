@@ -14,9 +14,10 @@ type EventType string
 type EventLogLevel string
 
 const (
-	EventGroupJoinRequest     EventType = "GROUP_JOIN_REQUEST"
-	EventServiceExpiryRequest EventType = "SERVICE_EXPIRY_REQUEST"
-	EventGroupExitRequest     EventType = "GROUP_EXIT_REQUEST"
+	EventGroupJoinRequest          EventType = "GROUP_JOIN_REQUEST"
+	EventServiceExpiryRequest      EventType = "SERVICE_EXPIRY_REQUEST"
+	EventGroupExitRequest          EventType = "GROUP_EXIT_REQUEST"
+	EventServiceExpiryNotification EventType = "SERVICE_EXPIRY_NOTIFICATION"
 
 	EventTypeRequestApproved EventType = "REQUEST_APPROVED"
 	EventTypeRequestRejected EventType = "REQUEST_REJECTED"
