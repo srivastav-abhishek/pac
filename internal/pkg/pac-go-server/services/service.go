@@ -238,6 +238,24 @@ func DeleteService(c *gin.Context) {
 		return
 	}
 	logger.Debug("successfully deleted service", zap.String("service name", serviceName))
+
+	// Delete associated service-expiry-extension requests if present
+	// Not generating event for request deletion as service is already deleted (To be discussed)
+	req, err := dbCon.GetRequestByServiceName(serviceName)
+	if err != nil {
+		logger.Error("failed to fetch the request", zap.String("service name", serviceName), zap.Error(err))
+		c.Status(http.StatusNoContent)
+		return
+	}
+	logger.Debug("fetched request", zap.Any("request", req))
+	for _, request := range req {
+		if request.RequestType == models.RequestExtendServiceExpiry {
+			if err := dbCon.DeleteRequest(request.ID.String()); err != nil {
+				logger.Error("failed to delete request in database", zap.String("id", request.ID.String()), zap.Error(err))
+			}
+		}
+
+	}
 	c.Status(http.StatusNoContent)
 }
 
