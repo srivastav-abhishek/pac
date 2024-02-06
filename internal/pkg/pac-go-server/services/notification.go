@@ -20,8 +20,9 @@ const (
 )
 
 var (
-	serviceExpiryMsg = "Service %s is expiring on %s. It will be deleted post-expiry, if not extended"
-	requestExpiryMsg = "Service is expired, hence request is no longer needed"
+	serviceExpiryMsg  = "Service %s is expiring on %s. It will be deleted post-expiry, if not extended"
+	requestExpiryMsg  = "Service is expired, hence request is no longer needed"
+	serviceExpiredMsg = "Service %s is expired. It is going to be deleted."
 )
 
 func raiseNotification() {
@@ -49,23 +50,29 @@ func raiseNotification() {
 		if isServiceExpired(service) {
 			logger.Debug("service is expired, expiry notification is not required", zap.Any("service", service.Name))
 			updateExpiryRequestinDB(service.Name)
+			generateEvent(service, models.EventServiceExpiredNotification, fmt.Sprintf(serviceExpiredMsg, service.Name))
 			continue
 		}
-		if expiryNotificationSentRecently(service.Name, service.Expiry.String()) {
-			logger.Debug("notification already sent", zap.Any("service", service.Name))
-			continue
-		}
-		logger.Debug("raising service-expiry-notification for service", zap.Any("service", service.Name))
-		event, err := models.NewEvent(service.UserID, service.UserID, models.EventServiceExpiryNotification)
-		if err != nil {
-			logger.Error("failed to create event", zap.Error(err))
-			return
-		}
-		event.SetLog(models.EventLogLevelINFO, fmt.Sprintf(serviceExpiryMsg, service.Name, service.Expiry.String()))
-		if err := dbCon.NewEvent(event); err != nil {
-			log.GetLogger().Error("failed to create event", zap.Error(err))
-			return
-		}
+		generateEvent(service, models.EventServiceExpiryNotification, fmt.Sprintf(serviceExpiryMsg, service.Name, service.Expiry.String()))
+	}
+}
+
+func generateEvent(service models.Service, eventType models.EventType, eventLog string) {
+	logger := log.GetLogger()
+	logger.Debug("raising notification for service", zap.Any("service", service.Name), zap.Any("notification", eventType), zap.Any("eventLog", eventLog))
+	if isNotificationSentRecently(service.Name, eventType, eventLog) {
+		logger.Debug("notification already sent", zap.Any("service", service.Name), zap.Any("notification", eventType))
+		return
+	}
+	event, err := models.NewEvent(service.UserID, service.UserID, eventType)
+	if err != nil {
+		logger.Error("failed to create event", zap.Error(err))
+		return
+	}
+	event.SetLog(models.EventLogLevelINFO, eventLog)
+	if err := dbCon.NewEvent(event); err != nil {
+		log.GetLogger().Error("failed to create event", zap.Error(err))
+		return
 	}
 }
 
@@ -98,16 +105,17 @@ func updateExpiryRequestinDB(serviceName string) {
 	}
 }
 
-func expiryNotificationSentRecently(serviceName string, serviceExpiry string) bool {
+func isNotificationSentRecently(serviceName string, notificationType models.EventType, eventLog string) bool {
 	logger := log.GetLogger()
-	events, _, err := dbCon.GetEventsByType(models.EventServiceExpiryNotification, pastDay)
+	logger.Debug("checking if notification sent recently", zap.Any("service", serviceName), zap.Any("notification", notificationType))
+	events, _, err := dbCon.GetEventsByType(notificationType, pastDay)
 	// Return false if unable to fetch events from db which will result in expiry notification getting sent
 	if err != nil {
 		logger.Error("failed to get service-about-expire events", zap.Error(err))
 		return false
 	}
 	for _, event := range events {
-		if event.Log.Message != fmt.Sprintf(serviceExpiryMsg, serviceName, serviceExpiry) {
+		if event.Log.Message != eventLog {
 			continue
 		}
 		return true

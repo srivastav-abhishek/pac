@@ -154,7 +154,12 @@ func (r *ServiceReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 			return ctrl.Result{}, nil
 		case appv1alpha1.ServiceStateExpired:
 			scope.Logger.Info("service expired", "name", scope.Service.ObjectMeta.Name)
-
+			// Expired service will be deleted after 1 day by reconciler
+			if time.Now().After(scope.Service.Spec.Expiry.Time.Add(24 * time.Hour)) {
+				if err := scope.ControllerScope.Client.Delete(ctx, scope.Service); err != nil {
+					return ctrl.Result{}, errors.Wrap(err, "failed to delete service")
+				}
+			}
 			if _, err := svc.Delete(ctx); err != nil {
 				return ctrl.Result{}, errors.Wrap(err, "error cleaning up service")
 			}

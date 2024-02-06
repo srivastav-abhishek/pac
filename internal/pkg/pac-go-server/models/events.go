@@ -14,10 +14,11 @@ type EventLogLevel string
 var ExpiryNotificationDuration time.Duration
 
 const (
-	EventGroupJoinRequest          EventType = "GROUP_JOIN_REQUEST"
-	EventServiceExpiryRequest      EventType = "SERVICE_EXPIRY_REQUEST"
-	EventGroupExitRequest          EventType = "GROUP_EXIT_REQUEST"
-	EventServiceExpiryNotification EventType = "SERVICE_EXPIRY_NOTIFICATION"
+	EventGroupJoinRequest           EventType = "GROUP_JOIN_REQUEST"
+	EventServiceExpiryRequest       EventType = "SERVICE_EXPIRY_REQUEST"
+	EventGroupExitRequest           EventType = "GROUP_EXIT_REQUEST"
+	EventServiceExpiryNotification  EventType = "SERVICE_EXPIRY_NOTIFICATION"
+	EventServiceExpiredNotification EventType = "SERVICE_EXPIRED_NOTIFICATION"
 
 	EventTypeRequestApproved EventType = "REQUEST_APPROVED"
 	EventTypeRequestRejected EventType = "REQUEST_REJECTED"
