@@ -62,12 +62,24 @@ func CreateKey(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Name must be 32 characters and cannot empty."})
 		return
 	}
+
+	keys, err := dbCon.GetKeyByUserID(userID)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("failed to get all keys from the db, err: %s", err.Error())})
+		return
+	}
+	for _, storedKey := range keys {
+		if storedKey.Name == key.Name {
+			c.JSON(http.StatusConflict, gin.H{"error": "Key name should be unique"})
+			return
+		}
+	}
+
 	// Insert the request into the database
 	if err := dbCon.CreateKey(&key); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("failed to insert the key into the db, err: %s", err.Error())})
 		return
 	}
-
 	c.Status(http.StatusCreated)
 }
 
