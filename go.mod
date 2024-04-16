@@ -12,6 +12,7 @@ require (
 	github.com/Nerzal/gocloak/v13 v13.7.0
 	github.com/gin-gonic/gin v1.9.1
 	github.com/go-logr/logr v1.4.1
+	github.com/golang/mock v1.6.0
 	github.com/joho/godotenv v1.5.1
 	github.com/onsi/ginkgo/v2 v2.17.1
 	github.com/onsi/gomega v1.33.0
@@ -20,6 +21,7 @@ require (
 	github.com/sendgrid/rest v2.6.9+incompatible
 	github.com/sendgrid/sendgrid-go v3.14.0+incompatible
 	github.com/spf13/pflag v1.0.5
+	github.com/stretchr/testify v1.9.0
 	github.com/tbaehler/gin-keycloak v1.6.0
 	go.mongodb.org/mongo-driver v1.15.0
 	go.uber.org/zap v1.27.0
@@ -97,6 +99,7 @@ require (
 	github.com/opentracing/opentracing-go v1.2.0 // indirect
 	github.com/patrickmn/go-cache v2.1.0+incompatible // indirect
 	github.com/pelletier/go-toml/v2 v2.2.0 // indirect
+	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/prometheus/client_golang v1.16.0 // indirect
 	github.com/prometheus/client_model v0.4.0 // indirect
 	github.com/prometheus/common v0.42.0 // indirect
