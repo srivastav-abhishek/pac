@@ -17,10 +17,14 @@ func GetUsers(c *gin.Context) {
 	var users []models.User
 	for _, user := range usrs {
 		u := models.User{
-			Username:  *user.Username,
-			ID:        *user.ID,
-			FirstName: *user.FirstName,
-			LastName:  *user.LastName,
+			Username: *user.Username,
+			ID:       *user.ID,
+		}
+		if user.FirstName != nil {
+			u.FirstName = *user.FirstName
+		}
+		if user.LastName != nil {
+			u.LastName = *user.LastName
 		}
 		// Email field is optional, hence check for nil before assigning.
 		if user.Email != nil {
@@ -45,6 +49,12 @@ func GetUser(c *gin.Context) {
 				ID:        *user.ID,
 				FirstName: *user.FirstName,
 				LastName:  *user.LastName,
+			}
+			if user.FirstName != nil {
+				usr.FirstName = *user.FirstName
+			}
+			if user.LastName != nil {
+				usr.LastName = *user.LastName
 			}
 			// Email field is optional, hence check for nil before assigning.
 			if user.Email != nil {
