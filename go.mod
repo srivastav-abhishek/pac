@@ -10,7 +10,7 @@ require (
 	github.com/IBM/platform-services-go-sdk v0.68.1
 	github.com/IBM/vpc-go-sdk v0.57.0
 	github.com/Nerzal/gocloak/v13 v13.7.0
-	github.com/gin-gonic/gin v1.10.0
+	github.com/gin-gonic/gin v1.10.1
 	github.com/go-logr/logr v1.4.3
 	github.com/joho/godotenv v1.5.1
 	github.com/onsi/ginkgo/v2 v2.20.0
