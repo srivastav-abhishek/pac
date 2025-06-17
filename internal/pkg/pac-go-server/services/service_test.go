@@ -3,6 +3,7 @@ package services
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -51,6 +52,63 @@ func TestGetAllServices(t *testing.T) {
 			c.Request = req.WithContext(ctx)
 			kubeClient = mockClient
 			GetAllServices(c)
+			assert.Equal(t, tc.httpStatus, c.Writer.Status())
+		})
+	}
+}
+
+func TestGetService(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	mockClient, _, tearDown := setUp(t)
+	defer tearDown()
+
+	testcases := []struct {
+		name           string
+		mockFunc       func()
+		requestParams  gin.Param
+		requestContext testContext
+		httpStatus     int
+	}{
+		{
+			name: "get service succesfully",
+			mockFunc: func() {
+				mockClient.EXPECT().GetService(gomock.Any()).Return(getResource("get-service", nil).(pac.Service), nil).Times(1)
+			},
+			requestParams: gin.Param{Key: "name", Value: "test-service"},
+			httpStatus:    http.StatusOK,
+			requestContext: formContext(customValues{
+				"userid": "12345",
+				"roles":  []string{"manager"},
+			}),
+		},
+		{
+			name:          "service name not set",
+			mockFunc:      func() {},
+			requestParams: gin.Param{Key: "name", Value: ""},
+			httpStatus:    http.StatusBadRequest,
+		},
+		{
+			name: "failed to get service",
+			mockFunc: func() {
+				mockClient.EXPECT().GetService(gomock.Any()).Return(getResource("get-service", nil).(pac.Service), errors.New("failed to get service")).Times(1)
+			},
+			requestParams: gin.Param{Key: "name", Value: "test-service"},
+			httpStatus:    http.StatusBadRequest,
+		},
+	}
+	for _, tc := range testcases {
+		t.Run(tc.name, func(t *testing.T) {
+			tc.mockFunc()
+			c, _ := gin.CreateTestContext(httptest.NewRecorder())
+			req, err := http.NewRequest(http.MethodPost, "/services", nil)
+			if err != nil {
+				t.Fatal(err)
+			}
+			ctx := getContext(tc.requestContext)
+			c.Request = req.WithContext(ctx)
+			c.Params = gin.Params{tc.requestParams}
+			kubeClient = mockClient
+			GetService(c)
 			assert.Equal(t, tc.httpStatus, c.Writer.Status())
 		})
 	}

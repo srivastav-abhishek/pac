@@ -79,7 +79,6 @@ func getResource(apiType string, customValues map[string]interface{}) interface{
 		}
 		catalogList.Items = []pac.Catalog{testCatalog}
 		return catalogList
-
 	case "create-catalog":
 		cap := models.Capacity{
 			CPU:    2,
@@ -159,6 +158,41 @@ func getResource(apiType string, customValues map[string]interface{}) interface{
 			}
 		}
 		return catalog
+	case "get-service":
+		serviceSpec := pac.ServiceSpec{
+			UserID:      "test-user",
+			DisplayName: "test-service",
+			Expiry:      metav1.Time{},
+			Catalog:     corev1.LocalObjectReference{Name: "test-catalog"},
+			SSHKeys:     []string{"ssh-key"},
+		}
+		vm := pac.VM{
+			InstanceID:        "test",
+			IPAddress:         "1.1.1.1",
+			ExternalIPAddress: "2.2.2.2",
+			State:             "ready",
+		}
+		serviceStatus := pac.ServiceStatus{
+			VM:         vm,
+			AccessInfo: "access-info",
+			Expired:    false,
+			Message:    "test service",
+			State:      pac.ServiceStateCreated,
+			Successful: true,
+		}
+		service := pac.Service{
+			Spec:   serviceSpec,
+			Status: serviceStatus,
+		}
+		// Update service with custom values if provided
+		for key, value := range customValues {
+			if fieldValue := reflect.ValueOf(&service).Elem().FieldByName(key); fieldValue.IsValid() {
+				if value != nil {
+					fieldValue.Set(reflect.ValueOf(value))
+				}
+			}
+		}
+		return service
 	case "get-all-services":
 		serviceList := pac.ServiceList{}
 		serviceSpec := pac.ServiceSpec{
@@ -282,6 +316,51 @@ func getResource(apiType string, customValues map[string]interface{}) interface{
 			}
 		}
 		return []models.Request{request}
+	case "get-requests-by-user-id":
+		request := models.Request{
+			ID:            [12]byte{1},
+			UserID:        "12345",
+			Justification: "justification",
+			Comment:       "comment",
+			CreatedAt:     time.Time{},
+			State:         "approved",
+			RequestType:   "extension",
+			GroupAdmission: &models.GroupAdmission{
+				GroupID:   "test-group",
+				Group:     "manager",
+				Requester: "test-user",
+			},
+			ServiceExpiry: &models.ServiceExpiry{
+				Name:   "test-service",
+				Expiry: time.Now(),
+			},
+		}
+		// Update request with custom values if provided
+		for key, value := range customValues {
+			if fieldValue := reflect.ValueOf(&request).Elem().FieldByName(key); fieldValue.IsValid() {
+				if value != nil {
+					fieldValue.Set(reflect.ValueOf(value))
+				}
+			}
+		}
+		return []models.Request{request}
+	case "get-request-by-id":
+		request := models.Request{
+			ID:            [12]byte{1},
+			UserID:        "12345",
+			Justification: "justification",
+			Comment:       "comment",
+			CreatedAt:     time.Time{},
+		}
+		// Update request with custom values if provided
+		for key, value := range customValues {
+			if fieldValue := reflect.ValueOf(&request).Elem().FieldByName(key); fieldValue.IsValid() {
+				if value != nil {
+					fieldValue.Set(reflect.ValueOf(value))
+				}
+			}
+		}
+		return &request
 	default:
 		return nil
 	}
