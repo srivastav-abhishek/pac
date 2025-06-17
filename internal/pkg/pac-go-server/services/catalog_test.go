@@ -17,7 +17,7 @@ import (
 
 func TestCreateCatalog(t *testing.T) {
 	gin.SetMode(gin.TestMode)
-	mockClient, mockDBClient, tearDown := setUp(t)
+	mockClient, mockDBClient, _, tearDown := setUp(t)
 	defer tearDown()
 
 	c, _ := gin.CreateTestContext(httptest.NewRecorder())
@@ -86,7 +86,7 @@ func TestCreateCatalog(t *testing.T) {
 
 func TestGetAllCatalog(t *testing.T) {
 	gin.SetMode(gin.TestMode)
-	mockClient, _, tearDown := setUp(t)
+	mockClient, _, _, tearDown := setUp(t)
 	defer tearDown()
 
 	testcases := []struct {
@@ -123,7 +123,7 @@ func TestGetAllCatalog(t *testing.T) {
 
 func TestGetCatalog(t *testing.T) {
 	gin.SetMode(gin.TestMode)
-	mockClient, _, tearDown := setUp(t)
+	mockClient, _, _, tearDown := setUp(t)
 	defer tearDown()
 
 	testcases := []struct {
@@ -169,7 +169,7 @@ func TestGetCatalog(t *testing.T) {
 
 func TestDeleteCatalog(t *testing.T) {
 	gin.SetMode(gin.TestMode)
-	mockClient, mockDBClient, tearDown := setUp(t)
+	mockClient, mockDBClient, _, tearDown := setUp(t)
 	defer tearDown()
 
 	testcases := []struct {
@@ -237,7 +237,7 @@ func TestDeleteCatalog(t *testing.T) {
 
 func TestRetireCatalog(t *testing.T) {
 	gin.SetMode(gin.TestMode)
-	mockClient, mockDBClient, tearDown := setUp(t)
+	mockClient, mockDBClient, _, tearDown := setUp(t)
 	defer tearDown()
 
 	testcases := []struct {

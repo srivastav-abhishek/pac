@@ -21,7 +21,8 @@ func GetAllKeysHandler(c *gin.Context) {
 }
 
 func getAllKeys(c *gin.Context) ([]models.Key, error) {
-	kc := client.NewKeyClockClient(c.Request.Context())
+	config := client.GetConfigFromContext(c.Request.Context())
+	kc := client.NewKeyCloakClient(config, c.Request.Context())
 
 	var userID string
 	if !kc.IsRole(utils.ManagerRole) {
@@ -100,14 +101,14 @@ func DeleteKeyHandler(c *gin.Context) {
 
 func deleteKey(c *gin.Context, id string) error {
 	key, err := dbCon.GetKeyByID(id)
-	kc := client.NewKeyClockClient(c.Request.Context())
+	config := client.GetConfigFromContext(c.Request.Context())
+	kc := client.NewKeyCloakClient(config, c.Request.Context())
 	if err != nil {
 		return fmt.Errorf("failed to fetch the requested record from the db, err: %w", err)
 	}
 
 	if key.UserID != c.Request.Context().Value("userid").(string) && !kc.IsRole(utils.ManagerRole) {
 		return fmt.Errorf("%s", "you do not have permission to delete this key.")
-
 	}
 	if err := dbCon.DeleteKey(id); err != nil {
 		return fmt.Errorf("failed to delete the key from the db, err: %w", err)

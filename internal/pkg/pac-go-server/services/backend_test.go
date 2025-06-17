@@ -2,14 +2,18 @@ package services
 
 import (
 	"context"
+	"fmt"
 	"reflect"
 	"testing"
 	"time"
 
+	"github.com/Nerzal/gocloak/v13"
 	pac "github.com/PDeXchange/pac/apis/app/v1alpha1"
+	"github.com/PDeXchange/pac/internal/pkg/pac-go-server/client"
 	"github.com/PDeXchange/pac/internal/pkg/pac-go-server/client/kubernetes"
 	"github.com/PDeXchange/pac/internal/pkg/pac-go-server/db"
 	"github.com/PDeXchange/pac/internal/pkg/pac-go-server/models"
+	"github.com/PDeXchange/pac/internal/pkg/pac-go-server/utils"
 	"github.com/golang/mock/gomock"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -28,7 +32,7 @@ type testContext struct {
 type customValues = map[string]interface{}
 
 // return new mockclients and tearDown to release resource
-func setUp(t testing.TB) (mockedKubeClient *kubernetes.MockClient, mockedDBClient *db.MockDB, tearDown func()) {
+func setUp(t testing.TB) (mockedKubeClient *kubernetes.MockClient, mockedDBClient *db.MockDB, mockedKeyCloakClient *client.MockKeycloak, tearDown func()) {
 	// mocking kubeclient
 	ctrlKube := gomock.NewController(t)
 	mockkubeclient := kubernetes.NewMockClient(ctrlKube)
@@ -37,9 +41,17 @@ func setUp(t testing.TB) (mockedKubeClient *kubernetes.MockClient, mockedDBClien
 	ctrlDB := gomock.NewController(t)
 	mockDBClient := db.NewMockDB(ctrlDB)
 
-	return mockkubeclient, mockDBClient, func() {
+	ctrlKeyCloak := gomock.NewController(t)
+	mockKeyCloakClient := client.NewMockKeycloak(ctrlKeyCloak)
+
+	client.NewKeyCloakClient = func(config client.KeyCloakConfig, ctx context.Context) client.Keycloak {
+		return mockKeyCloakClient
+	}
+
+	return mockkubeclient, mockDBClient, mockKeyCloakClient, func() {
 		ctrlKube.Finish()
 		ctrlDB.Finish()
+		ctrlKeyCloak.Finish()
 	}
 }
 
@@ -79,7 +91,6 @@ func getResource(apiType string, customValues map[string]interface{}) interface{
 		}
 		catalogList.Items = []pac.Catalog{testCatalog}
 		return catalogList
-
 	case "create-catalog":
 		cap := models.Capacity{
 			CPU:    2,
@@ -159,6 +170,43 @@ func getResource(apiType string, customValues map[string]interface{}) interface{
 			}
 		}
 		return catalog
+	case "get-service":
+		serviceSpec := pac.ServiceSpec{
+			UserID:      "test-user",
+			DisplayName: "test-service",
+			Expiry: metav1.Time{
+				Time: time.Now().Add(3 * time.Hour),
+			},
+			Catalog: corev1.LocalObjectReference{Name: "test-catalog"},
+			SSHKeys: []string{"ssh-key"},
+		}
+		vm := pac.VM{
+			InstanceID:        "test",
+			IPAddress:         "1.1.1.1",
+			ExternalIPAddress: "2.2.2.2",
+			State:             "ready",
+		}
+		serviceStatus := pac.ServiceStatus{
+			VM:         vm,
+			AccessInfo: "access-info",
+			Expired:    false,
+			Message:    "test service",
+			State:      pac.ServiceStateCreated,
+			Successful: true,
+		}
+		service := pac.Service{
+			Spec:   serviceSpec,
+			Status: serviceStatus,
+		}
+		// Update service with custom values if provided
+		for key, value := range customValues {
+			if fieldValue := reflect.ValueOf(&service).Elem().FieldByName(key); fieldValue.IsValid() {
+				if value != nil {
+					fieldValue.Set(reflect.ValueOf(value))
+				}
+			}
+		}
+		return service
 	case "get-all-services":
 		serviceList := pac.ServiceList{}
 		serviceSpec := pac.ServiceSpec{
@@ -185,6 +233,9 @@ func getResource(apiType string, customValues map[string]interface{}) interface{
 		service := pac.Service{
 			Spec:   serviceSpec,
 			Status: status,
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "test-service",
+			},
 		}
 		// Update services with custom values if provided
 		for key, value := range customValues {
@@ -282,6 +333,184 @@ func getResource(apiType string, customValues map[string]interface{}) interface{
 			}
 		}
 		return []models.Request{request}
+	case "get-requests-by-user-id":
+		request := models.Request{
+			ID:            [12]byte{1},
+			UserID:        "12345",
+			Justification: "justification",
+			Comment:       "comment",
+			CreatedAt:     time.Time{},
+			State:         "approved",
+			RequestType:   "extension",
+			GroupAdmission: &models.GroupAdmission{
+				GroupID:   "test-group",
+				Group:     "manager",
+				Requester: "test-user",
+			},
+			ServiceExpiry: &models.ServiceExpiry{
+				Name:   "test-service",
+				Expiry: time.Now(),
+			},
+		}
+		// Update request with custom values if provided
+		for key, value := range customValues {
+			if fieldValue := reflect.ValueOf(&request).Elem().FieldByName(key); fieldValue.IsValid() {
+				if value != nil {
+					fieldValue.Set(reflect.ValueOf(value))
+				}
+			}
+		}
+		return []models.Request{request}
+	case "get-request-by-id":
+		request := models.Request{
+			ID:            [12]byte{1},
+			UserID:        "12345",
+			Justification: "justification",
+			Comment:       "comment",
+			CreatedAt:     time.Time{},
+			RequestType:   "SERVICE_EXPIRY",
+			GroupAdmission: &models.GroupAdmission{
+				GroupID:   "test-group",
+				Group:     "manager",
+				Requester: "test-user",
+			},
+			ServiceExpiry: &models.ServiceExpiry{
+				Name:   "test-service",
+				Expiry: time.Now().Add(3 * time.Hour),
+			},
+		}
+		// Update request with custom values if provided
+		for key, value := range customValues {
+			if fieldValue := reflect.ValueOf(&request).Elem().FieldByName(key); fieldValue.IsValid() {
+				if value != nil {
+					fieldValue.Set(reflect.ValueOf(value))
+				}
+			}
+		}
+		return &request
+	case "get-key-by-id":
+		key := models.Key{
+			ID:      [12]byte{1},
+			UserID:  "12345",
+			Name:    "test-key-1",
+			Content: "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQDwsjnatgg0vKTA5XbpTs2wkNcXvdVrRR4+q2QbLvJCC1gKSXhF3iSHwhxEJyaRhErqHDD2XTLd72+fuuiM7GOmaVtEQA+gyu19aEsMCKD7giqWf9XD01WysGckgxNPTKy4XcSARg+aspk98vydsN29IZc7SFModvhMONoOTPhp+VUxX5wLXBmA/Cnsz5xlaLKxPPjhrX95W2AT7YIQcSosvnKYC6boct/TFGFqkbC/v735+7Da39rwHvJ74ygLCUKq70ytI7bL1/10A8lsCuVSiEkZKNqkkiMqXO9rbY6Hpj7hm0qJ1VwgOozD4MX9YCRsItdXMJXHrZOp1QNVnTIf test@example.com",
+		}
+		// Update key with custom values if provided
+		for key, value := range customValues {
+			if fieldValue := reflect.ValueOf(&key).Elem().FieldByName(key); fieldValue.IsValid() {
+				if value != nil {
+					fieldValue.Set(reflect.ValueOf(value))
+				}
+			}
+		}
+		return &key
+	case "get-quota-by-groupid":
+		quota := &models.Quota{
+			ID:      [12]byte{2},
+			GroupID: "122343",
+			Capacity: models.Capacity{
+				CPU:    10,
+				Memory: 10,
+			},
+		}
+		// Update quota with custom values if provided
+		for key, value := range customValues {
+			if fieldValue := reflect.ValueOf(&quota).Elem().FieldByName(key); fieldValue.IsValid() {
+				if value != nil {
+					fieldValue.Set(reflect.ValueOf(value))
+				}
+			}
+		}
+		return quota
+	case "get-group-info":
+		group := gocloak.Group{
+			ID:   utils.Ptr("test-group"),
+			Name: utils.Ptr("test-group"),
+		}
+		// Update group with custom values if provided
+		for key, value := range customValues {
+			if fieldValue := reflect.ValueOf(&group).Elem().FieldByName(key); fieldValue.IsValid() {
+				if value != nil {
+					fieldValue.Set(reflect.ValueOf(value))
+				}
+			}
+		}
+		return []*gocloak.Group{&group}
+	case "add-to-group-request":
+		request := models.Request{
+			ID:            [12]byte{1},
+			UserID:        "12345",
+			Justification: "justification",
+			Comment:       "comment",
+			CreatedAt:     time.Time{},
+			RequestType:   "GROUP",
+			GroupAdmission: &models.GroupAdmission{
+				GroupID:   "test-group",
+				Group:     "manager",
+				Requester: "test-user",
+			},
+			ServiceExpiry: &models.ServiceExpiry{
+				Name:   "test-service",
+				Expiry: time.Now().Add(3 * time.Hour),
+			},
+		}
+		// Update request with custom values if provided
+		for key, value := range customValues {
+			if fieldValue := reflect.ValueOf(&request).Elem().FieldByName(key); fieldValue.IsValid() {
+				if value != nil {
+					fieldValue.Set(reflect.ValueOf(value))
+				}
+			}
+		}
+		return &request
+	case "create-quota":
+		quota := models.Quota{
+			ID:      [12]byte{3},
+			GroupID: "test-group",
+		}
+		// Update quota with custom values if provided
+		for key, value := range customValues {
+			if fieldValue := reflect.ValueOf(&quota).Elem().FieldByName(key); fieldValue.IsValid() {
+				if value != nil {
+					fieldValue.Set(reflect.ValueOf(value))
+				}
+			}
+		}
+		return &quota
+	case "get-tnc-by-userid":
+		tnc := models.TermsAndConditions{
+			UserID: "12345",
+		}
+		// Update tnc with custom values if provided
+		for key, value := range customValues {
+			if fieldValue := reflect.ValueOf(&tnc).Elem().FieldByName(key); fieldValue.IsValid() {
+				if value != nil {
+					fmt.Println("changing: ", value)
+					fieldValue.Set(reflect.ValueOf(value))
+				}
+			}
+		}
+		return &tnc
+	case "get-events-by-userid":
+		event := models.Event{
+			Type:        models.EventTypeRequestApproved,
+			CreatedAt:   time.Now(),
+			Originator:  "12345",
+			UserID:      "12345",
+			UserEmail:   "test@pac.com",
+			Notify:      false,
+			NotifyAdmin: false,
+			Notified:    false,
+		}
+		return []models.Event{event}
+	case "get-all-users":
+		user := gocloak.User{
+			ID:        utils.Ptr("12345"),
+			Username:  utils.Ptr("test-user"),
+			FirstName: utils.Ptr("firstname"),
+			LastName:  utils.Ptr("lastname"),
+		}
+		return []*gocloak.User{&user}
 	default:
 		return nil
 	}
