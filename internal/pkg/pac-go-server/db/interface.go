@@ -38,4 +38,5 @@ type DB interface {
 
 	AcceptTermsAndConditions(*models.TermsAndConditions) error
 	GetTermsAndConditionsByUserID(string) (*models.TermsAndConditions, error)
+	DeleteTermsAndConditionsByUserID(string) error
 }
