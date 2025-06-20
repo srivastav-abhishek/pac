@@ -180,8 +180,8 @@ func GetUserQuota(c *gin.Context) {
 	logger := log.GetLogger()
 	var userQuota, usedQuota, availableQuota models.Capacity
 	var err error
-	kc := client.NewKeyClockClient(c.Request.Context())
-	userID := kc.GetUserID()
+	// kc := client.NewKeyClockClient(c.Request.Context())
+	userID := keyCloakClient.GetUserID()
 	userQuota, err = getUserQuota(c)
 	if err != nil {
 		logger.Error("failed to get quota", zap.String("user id", userID), zap.Error(err))

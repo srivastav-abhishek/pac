@@ -26,6 +26,7 @@ const maxServiceNameLength = 50
 
 var dbCon db.DB
 var kubeClient kubernetes.Client
+var keyCloakClient client.Keycloak
 
 func SetDB(db db.DB) {
 	dbCon = db
@@ -33,6 +34,10 @@ func SetDB(db db.DB) {
 
 func SetKubeClient(client kubernetes.Client) {
 	kubeClient = client
+}
+
+func SetKeyCloakClient(kc client.Keycloak) {
+	keyCloakClient = kc
 }
 
 func GetAllServicesHandler(c *gin.Context) {

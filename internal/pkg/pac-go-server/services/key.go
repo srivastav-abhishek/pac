@@ -107,8 +107,8 @@ func deleteKey(c *gin.Context, id string) error {
 
 	if key.UserID != c.Request.Context().Value("userid").(string) && !kc.IsRole(utils.ManagerRole) {
 		return fmt.Errorf("%s", "you do not have permission to delete this key.")
-
 	}
+
 	if err := dbCon.DeleteKey(id); err != nil {
 		return fmt.Errorf("failed to delete the key from the db, err: %w", err)
 	}

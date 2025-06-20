@@ -217,7 +217,7 @@ func NewGroupRequest(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("failed to fetch the requested record from the db, err: %s", err.Error())})
 		return
 	}
-	logger.Debug("fetched request", zap.Any("request", r))
+	logger.Info("fetched request", zap.Any("request", r))
 	for _, request := range r {
 		if request.State == models.RequestStateNew {
 			logger.Debug("user is already requested access to this group", zap.String("group", *grp.Name), zap.Any("request", r))

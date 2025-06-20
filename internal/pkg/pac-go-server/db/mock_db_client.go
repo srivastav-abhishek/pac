@@ -118,6 +118,20 @@ func (mr *MockDBMockRecorder) DeleteRequest(arg0 interface{}) *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteRequest", reflect.TypeOf((*MockDB)(nil).DeleteRequest), arg0)
 }
 
+// DeleteTermsAndConditionsByUserID mocks base method.
+func (m *MockDB) DeleteTermsAndConditionsByUserID(arg0 string) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "DeleteTermsAndConditionsByUserID", arg0)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// DeleteTermsAndConditionsByUserID indicates an expected call of DeleteTermsAndConditionsByUserID.
+func (mr *MockDBMockRecorder) DeleteTermsAndConditionsByUserID(arg0 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteTermsAndConditionsByUserID", reflect.TypeOf((*MockDB)(nil).DeleteTermsAndConditionsByUserID), arg0)
+}
+
 // Disconnect mocks base method.
 func (m *MockDB) Disconnect() error {
 	m.ctrl.T.Helper()

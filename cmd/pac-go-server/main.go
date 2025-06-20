@@ -1,11 +1,13 @@
 package main
 
 import (
+	"context"
 	"time"
 
 	flag "github.com/spf13/pflag"
 	"go.uber.org/zap"
 
+	"github.com/PDeXchange/pac/internal/pkg/pac-go-server/client"
 	"github.com/PDeXchange/pac/internal/pkg/pac-go-server/client/kubernetes"
 	"github.com/PDeXchange/pac/internal/pkg/pac-go-server/db/mongodb"
 	log "github.com/PDeXchange/pac/internal/pkg/pac-go-server/logger"
@@ -50,6 +52,9 @@ func main() {
 	logger.Info("Attempting to connect to Kubernetes cluster...")
 	kubeClient := kubernetes.NewClient()
 	services.SetKubeClient(kubeClient)
+
+	keyCloakClient := client.NewKeyClockClient(context.Background())
+	services.SetKeyCloakClient(keyCloakClient)
 
 	logger.Info("Starting service expiry notifier")
 	go services.ExpiryNotification()

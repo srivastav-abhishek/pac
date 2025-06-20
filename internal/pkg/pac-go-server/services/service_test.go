@@ -17,7 +17,7 @@ import (
 
 func TestGetAllServices(t *testing.T) {
 	gin.SetMode(gin.TestMode)
-	mockClient, _, tearDown := setUp(t)
+	mockClient, _, _, tearDown := setUp(t)
 	defer tearDown()
 
 	testcases := []struct {
@@ -51,7 +51,7 @@ func TestGetAllServices(t *testing.T) {
 			ctx := getContext(tc.requestContext)
 			c.Request = req.WithContext(ctx)
 			kubeClient = mockClient
-			GetAllServices(c)
+			GetAllServicesHandler(c)
 			assert.Equal(t, tc.httpStatus, c.Writer.Status())
 		})
 	}
@@ -59,7 +59,7 @@ func TestGetAllServices(t *testing.T) {
 
 func TestGetService(t *testing.T) {
 	gin.SetMode(gin.TestMode)
-	mockClient, _, tearDown := setUp(t)
+	mockClient, _, _, tearDown := setUp(t)
 	defer tearDown()
 
 	testcases := []struct {
@@ -116,7 +116,7 @@ func TestGetService(t *testing.T) {
 
 func TestCreateService(t *testing.T) {
 	gin.SetMode(gin.TestMode)
-	mockClient, mockDBClient, tearDown := setUp(t)
+	mockClient, mockDBClient, _, tearDown := setUp(t)
 	defer tearDown()
 	testcases := []struct {
 		name           string
@@ -174,7 +174,7 @@ func TestCreateService(t *testing.T) {
 
 func TestDeleteService(t *testing.T) {
 	gin.SetMode(gin.TestMode)
-	mockClient, mockDBClient, tearDown := setUp(t)
+	mockClient, mockDBClient, _, tearDown := setUp(t)
 	defer tearDown()
 	testcases := []struct {
 		name           string
@@ -210,7 +210,7 @@ func TestDeleteService(t *testing.T) {
 			c.Params = gin.Params{tc.requestParams}
 			kubeClient = mockClient
 			dbCon = mockDBClient
-			DeleteService(c)
+			DeleteServiceHandler(c)
 			assert.Equal(t, tc.httpStatus, c.Writer.Status())
 		})
 	}

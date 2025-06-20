@@ -12,7 +12,7 @@ import (
 )
 
 func getGroups(context context.Context) ([]*gocloak.Group, error) {
-	groups, err := client.NewKeyClockClient(context).GetGroups()
+	groups, err := keyCloakClient.GetGroups()
 	if err != nil {
 		return nil, err
 	}

@@ -36,3 +36,7 @@ func ValidateQuotaFields(c *gin.Context, cpuCap float64, memCap int) error {
 	}
 	return nil
 }
+
+func Ptr[T any](v T) *T {
+	return &v
+}
