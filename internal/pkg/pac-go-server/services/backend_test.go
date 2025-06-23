@@ -2,6 +2,7 @@ package services
 
 import (
 	"context"
+	"fmt"
 	"reflect"
 	"testing"
 	"time"
@@ -475,6 +476,32 @@ func getResource(apiType string, customValues map[string]interface{}) interface{
 			}
 		}
 		return &quota
+	case "get-tnc-by-userid":
+		tnc := models.TermsAndConditions{
+			UserID: "12345",
+		}
+		// Update tnc with custom values if provided
+		for key, value := range customValues {
+			if fieldValue := reflect.ValueOf(&tnc).Elem().FieldByName(key); fieldValue.IsValid() {
+				if value != nil {
+					fmt.Println("changing: ", value)
+					fieldValue.Set(reflect.ValueOf(value))
+				}
+			}
+		}
+		return &tnc
+	case "get-events-by-userid":
+		event := models.Event{
+			Type:        models.EventTypeRequestApproved,
+			CreatedAt:   time.Now(),
+			Originator:  "12345",
+			UserID:      "12345",
+			UserEmail:   "test@pac.com",
+			Notify:      false,
+			NotifyAdmin: false,
+			Notified:    false,
+		}
+		return []models.Event{event}
 	default:
 		return nil
 	}
