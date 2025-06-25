@@ -13,7 +13,7 @@ import (
 
 func TestGetEvents(t *testing.T) {
 	gin.SetMode(gin.TestMode)
-	_, mockDBClient, _, tearDown := setUp(t)
+	_, mockDBClient, mockKCClient, tearDown := setUp(t)
 	defer tearDown()
 
 	testcases := []struct {
@@ -25,6 +25,7 @@ func TestGetEvents(t *testing.T) {
 		{
 			name: "get events successful",
 			mockFunc: func() {
+				mockKCClient.EXPECT().IsRole(gomock.Any()).Return(true).Times(1)
 				mockDBClient.EXPECT().GetEventsByUserID(gomock.Any(), gomock.Any(), gomock.Any()).Return(getResource("get-events-by-userid", nil).([]models.Event), int64(1), nil).Times(1)
 			},
 			requestContext: formContext(customValues{

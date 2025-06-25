@@ -12,7 +12,7 @@ import (
 
 // GetEvents returns all events
 func GetEvents(c *gin.Context) {
-	kc := client.NewKeyClockClient(c.Request.Context())
+	kc := client.NewKeyCloakClientFromContext(c.Request.Context())
 
 	page := c.DefaultQuery("page", "1")         // Get the page number from the query parameter
 	perPage := c.DefaultQuery("per_page", "10") // Get the number of items per page from the query parameter

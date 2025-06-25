@@ -1,6 +1,8 @@
 package services
 
 import (
+	"bytes"
+	"encoding/json"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -28,7 +30,7 @@ func TestGetQuota(t *testing.T) {
 		{
 			name: "quota fetched successfully",
 			mockFunc: func() {
-				mockKCClient.EXPECT().GetGroups().Return(getResource("get-group-info", nil).([]*gocloak.Group), nil).AnyTimes()
+				mockKCClient.EXPECT().GetGroups(gomock.Any()).Return(getResource("get-group-info", nil).([]*gocloak.Group), nil).AnyTimes()
 				mockDBClient.EXPECT().GetQuotaForGroupID(gomock.Any()).Return(getResource("get-quota-by-groupid", nil).(*models.Quota), nil).Times(1)
 			},
 			httpStatus:    http.StatusOK,
@@ -53,59 +55,117 @@ func TestGetQuota(t *testing.T) {
 			c.Request = req.WithContext(ctx)
 			c.Params = gin.Params{tc.requestParams}
 			dbCon = mockDBClient
-			keyCloakClient = mockKCClient
 			GetQuota(c)
 			assert.Equal(t, tc.httpStatus, c.Writer.Status())
 		})
 	}
 }
 
-// func TestCreateQuota(t *testing.T) {
-// 	gin.SetMode(gin.TestMode)
-// 	_, mockDBClient, mockKCClient, tearDown := setUp(t)
-// 	defer tearDown()
+func TestCreateQuota(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	_, mockDBClient, mockKCClient, tearDown := setUp(t)
+	defer tearDown()
 
-// 	testcases := []struct {
-// 		name           string
-// 		mockFunc       func()
-// 		requestContext testContext
-// 		httpStatus     int
-// 		requestParams  gin.Param
-// 		quota          *models.Quota
-// 	}{
-// 		{
-// 			name: "created quota successfully",
-// 			mockFunc: func() {
-// 				mockKCClient.EXPECT().GetGroups().Return(getResource("get-group-info", nil).([]*gocloak.Group), nil).AnyTimes()
-// 				mockDBClient.EXPECT().GetQuotaForGroupID(gomock.Any()).Return(getResource("create-quota", nil).(*models.Quota), nil).Times(1)
-// 				mockDBClient.EXPECT().NewQuota(gomock.Any()).Return(nil).AnyTimes()
-// 			},
-// 			httpStatus:    http.StatusCreated,
-// 			requestParams: gin.Param{Key: "id", Value: "test-group"},
-// 			quota:         getResource("create-quota", nil).(*models.Quota),
-// 		},
-// 	}
-// 	for _, tc := range testcases {
-// 		t.Run(tc.name, func(t *testing.T) {
-// 			tc.mockFunc()
-// 			c, _ := gin.CreateTestContext(httptest.NewRecorder())
-// 			marshalledQuota, _ := json.Marshal(tc.quota)
-// 			req, err := http.NewRequest(http.MethodGet, "/quota", bytes.NewBuffer(marshalledQuota))
-// 			if err != nil {
-// 				t.Fatal(err)
-// 			}
-// 			ctx := getContext(tc.requestContext)
-// 			c.Request = req.WithContext(ctx)
-// 			c.Params = gin.Params{tc.requestParams}
-// 			dbCon = mockDBClient
-// 			keyCloakClient = mockKCClient
-// 			CreateQuota(c)
-// 			assert.Equal(t, tc.httpStatus, c.Writer.Status())
-// 		})
-// 	}
-// }
+	testcases := []struct {
+		name           string
+		mockFunc       func()
+		requestContext testContext
+		httpStatus     int
+		requestParams  gin.Param
+		quota          *models.Quota
+	}{
+		{
+			name: "created quota successfully",
+			mockFunc: func() {
+				mockKCClient.EXPECT().GetGroups(gomock.Any()).Return(getResource("get-group-info", nil).([]*gocloak.Group), nil).AnyTimes()
+				mockDBClient.EXPECT().GetQuotaForGroupID(gomock.Any()).Return(nil, nil).Times(1)
+				mockDBClient.EXPECT().NewQuota(gomock.Any()).Return(nil).AnyTimes()
+			},
+			httpStatus:    http.StatusCreated,
+			requestParams: gin.Param{Key: "id", Value: "test-group"},
+			quota:         getResource("create-quota", nil).(*models.Quota),
+		},
+		{
+			name: "user not part of group",
+			mockFunc: func() {
+				mockDBClient.EXPECT().GetQuotaForGroupID(gomock.Any()).Return(getResource("create-quota", nil).(*models.Quota), nil).Times(1)
+			},
+			httpStatus:    http.StatusConflict,
+			requestParams: gin.Param{Key: "id", Value: "test-group"},
+			quota:         getResource("create-quota", nil).(*models.Quota),
+		},
+	}
+	for _, tc := range testcases {
+		t.Run(tc.name, func(t *testing.T) {
+			tc.mockFunc()
+			c, _ := gin.CreateTestContext(httptest.NewRecorder())
+			marshalledQuota, _ := json.Marshal(tc.quota)
+			req, err := http.NewRequest(http.MethodGet, "/quota", bytes.NewBuffer(marshalledQuota))
+			if err != nil {
+				t.Fatal(err)
+			}
+			ctx := getContext(tc.requestContext)
+			c.Request = req.WithContext(ctx)
+			c.Params = gin.Params{tc.requestParams}
+			dbCon = mockDBClient
+			CreateQuota(c)
+			assert.Equal(t, tc.httpStatus, c.Writer.Status())
+		})
+	}
+}
 
-// TODO: Add update quota after resolving
+func TestUpdateQuota(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	_, mockDBClient, mockKCClient, tearDown := setUp(t)
+	defer tearDown()
+
+	testcases := []struct {
+		name           string
+		mockFunc       func()
+		requestContext testContext
+		httpStatus     int
+		requestParams  gin.Param
+		quota          *models.Quota
+	}{
+		{
+			name: "updated quota successfully",
+			mockFunc: func() {
+				mockKCClient.EXPECT().GetGroups(gomock.Any()).Return(getResource("get-group-info", nil).([]*gocloak.Group), nil).AnyTimes()
+				mockDBClient.EXPECT().GetQuotaForGroupID(gomock.Any()).Return(getResource("create-quota", nil).(*models.Quota), nil).Times(1)
+				mockDBClient.EXPECT().UpdateQuota(gomock.Any()).Return(nil).AnyTimes()
+			},
+			httpStatus:    http.StatusCreated,
+			requestParams: gin.Param{Key: "id", Value: "test-group"},
+			quota:         getResource("create-quota", nil).(*models.Quota),
+		},
+		{
+			name: "no quota policy exists for the groupid",
+			mockFunc: func() {
+				mockDBClient.EXPECT().GetQuotaForGroupID(gomock.Any()).Return(nil, nil).Times(1)
+			},
+			httpStatus:    http.StatusConflict,
+			requestParams: gin.Param{Key: "id", Value: "test-group"},
+			quota:         getResource("create-quota", nil).(*models.Quota),
+		},
+	}
+	for _, tc := range testcases {
+		t.Run(tc.name, func(t *testing.T) {
+			tc.mockFunc()
+			c, _ := gin.CreateTestContext(httptest.NewRecorder())
+			marshalledQuota, _ := json.Marshal(tc.quota)
+			req, err := http.NewRequest(http.MethodGet, "/quota", bytes.NewBuffer(marshalledQuota))
+			if err != nil {
+				t.Fatal(err)
+			}
+			ctx := getContext(tc.requestContext)
+			c.Request = req.WithContext(ctx)
+			c.Params = gin.Params{tc.requestParams}
+			dbCon = mockDBClient
+			UpdateQuota(c)
+			assert.Equal(t, tc.httpStatus, c.Writer.Status())
+		})
+	}
+}
 
 func TestDeleteQuota(t *testing.T) {
 	gin.SetMode(gin.TestMode)
@@ -122,7 +182,7 @@ func TestDeleteQuota(t *testing.T) {
 		{
 			name: "quota deleted successfully",
 			mockFunc: func() {
-				mockKCClient.EXPECT().GetGroups().Return(getResource("get-group-info", nil).([]*gocloak.Group), nil).AnyTimes()
+				mockKCClient.EXPECT().GetGroups(gomock.Any()).Return(getResource("get-group-info", nil).([]*gocloak.Group), nil).AnyTimes()
 				mockDBClient.EXPECT().DeleteQuota(gomock.Any()).Return(nil).AnyTimes()
 			},
 			httpStatus:    http.StatusNoContent,
@@ -131,7 +191,7 @@ func TestDeleteQuota(t *testing.T) {
 		{
 			name: "group id does not exists",
 			mockFunc: func() {
-				mockKCClient.EXPECT().GetGroups().Return(getResource("get-group-info", nil).([]*gocloak.Group), nil).AnyTimes()
+				mockKCClient.EXPECT().GetGroups(gomock.Any()).Return(getResource("get-group-info", nil).([]*gocloak.Group), nil).AnyTimes()
 			},
 			httpStatus:    http.StatusBadRequest,
 			requestParams: gin.Param{Key: "id", Value: "test-group-1"},
@@ -149,7 +209,7 @@ func TestDeleteQuota(t *testing.T) {
 			c.Request = req.WithContext(ctx)
 			c.Params = gin.Params{tc.requestParams}
 			dbCon = mockDBClient
-			keyCloakClient = mockKCClient
+			// keyCloakClient = mockKCClient
 			DeleteQuota(c)
 			assert.Equal(t, tc.httpStatus, c.Writer.Status())
 		})
@@ -171,9 +231,10 @@ func TestGetUserQuota(t *testing.T) {
 		{
 			name: "user quota fetched successfully",
 			mockFunc: func() {
-				mockKCClient.EXPECT().GetGroups().Return(getResource("get-group-info", nil).([]*gocloak.Group), nil).AnyTimes()
+				mockKCClient.EXPECT().GetGroups(gomock.Any()).Return(getResource("get-group-info", nil).([]*gocloak.Group), nil).AnyTimes()
 				mockClient.EXPECT().GetServices(gomock.Any()).Return(getResource("get-all-services", nil).(pac.ServiceList), nil).AnyTimes()
 				mockClient.EXPECT().GetCatalog(gomock.Any()).Return(getResource("get-catalog", nil).(pac.Catalog), nil).Times(1)
+				mockKCClient.EXPECT().GetUserID().Return("test-user").AnyTimes()
 			},
 			httpStatus:    http.StatusOK,
 			requestParams: gin.Param{Key: "id", Value: "test-group"},
@@ -196,7 +257,6 @@ func TestGetUserQuota(t *testing.T) {
 			c.Params = gin.Params{tc.requestParams}
 			kubeClient = mockClient
 			dbCon = mockDBClient
-			keyCloakClient = mockKCClient
 			GetUserQuota(c)
 			assert.Equal(t, tc.httpStatus, c.Writer.Status())
 		})

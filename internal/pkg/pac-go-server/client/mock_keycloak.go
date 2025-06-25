@@ -5,6 +5,7 @@
 package client
 
 import (
+	context "context"
 	reflect "reflect"
 
 	gocloak "github.com/Nerzal/gocloak/v13"
@@ -35,45 +36,45 @@ func (m *MockKeycloak) EXPECT() *MockKeycloakMockRecorder {
 }
 
 // AddUserToGroup mocks base method.
-func (m *MockKeycloak) AddUserToGroup(arg0, arg1 string) error {
+func (m *MockKeycloak) AddUserToGroup(arg0 context.Context, arg1, arg2 string) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "AddUserToGroup", arg0, arg1)
+	ret := m.ctrl.Call(m, "AddUserToGroup", arg0, arg1, arg2)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // AddUserToGroup indicates an expected call of AddUserToGroup.
-func (mr *MockKeycloakMockRecorder) AddUserToGroup(arg0, arg1 interface{}) *gomock.Call {
+func (mr *MockKeycloakMockRecorder) AddUserToGroup(arg0, arg1, arg2 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "AddUserToGroup", reflect.TypeOf((*MockKeycloak)(nil).AddUserToGroup), arg0, arg1)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "AddUserToGroup", reflect.TypeOf((*MockKeycloak)(nil).AddUserToGroup), arg0, arg1, arg2)
 }
 
 // DeleteUser mocks base method.
-func (m *MockKeycloak) DeleteUser(arg0 string) error {
+func (m *MockKeycloak) DeleteUser(arg0 context.Context, arg1 string) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "DeleteUser", arg0)
+	ret := m.ctrl.Call(m, "DeleteUser", arg0, arg1)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // DeleteUser indicates an expected call of DeleteUser.
-func (mr *MockKeycloakMockRecorder) DeleteUser(arg0 interface{}) *gomock.Call {
+func (mr *MockKeycloakMockRecorder) DeleteUser(arg0, arg1 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteUser", reflect.TypeOf((*MockKeycloak)(nil).DeleteUser), arg0)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteUser", reflect.TypeOf((*MockKeycloak)(nil).DeleteUser), arg0, arg1)
 }
 
 // DeleteUserFromGroup mocks base method.
-func (m *MockKeycloak) DeleteUserFromGroup(arg0, arg1 string) error {
+func (m *MockKeycloak) DeleteUserFromGroup(arg0 context.Context, arg1, arg2 string) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "DeleteUserFromGroup", arg0, arg1)
+	ret := m.ctrl.Call(m, "DeleteUserFromGroup", arg0, arg1, arg2)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // DeleteUserFromGroup indicates an expected call of DeleteUserFromGroup.
-func (mr *MockKeycloakMockRecorder) DeleteUserFromGroup(arg0, arg1 interface{}) *gomock.Call {
+func (mr *MockKeycloakMockRecorder) DeleteUserFromGroup(arg0, arg1, arg2 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteUserFromGroup", reflect.TypeOf((*MockKeycloak)(nil).DeleteUserFromGroup), arg0, arg1)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteUserFromGroup", reflect.TypeOf((*MockKeycloak)(nil).DeleteUserFromGroup), arg0, arg1, arg2)
 }
 
 // GetClient mocks base method.
@@ -91,48 +92,48 @@ func (mr *MockKeycloakMockRecorder) GetClient() *gomock.Call {
 }
 
 // GetGroups mocks base method.
-func (m *MockKeycloak) GetGroups() ([]*gocloak.Group, error) {
+func (m *MockKeycloak) GetGroups(arg0 context.Context) ([]*gocloak.Group, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetGroups")
+	ret := m.ctrl.Call(m, "GetGroups", arg0)
 	ret0, _ := ret[0].([]*gocloak.Group)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // GetGroups indicates an expected call of GetGroups.
-func (mr *MockKeycloakMockRecorder) GetGroups() *gomock.Call {
+func (mr *MockKeycloakMockRecorder) GetGroups(arg0 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetGroups", reflect.TypeOf((*MockKeycloak)(nil).GetGroups))
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetGroups", reflect.TypeOf((*MockKeycloak)(nil).GetGroups), arg0)
 }
 
 // GetUser mocks base method.
-func (m *MockKeycloak) GetUser(arg0 string) (*gocloak.User, error) {
+func (m *MockKeycloak) GetUser(arg0 context.Context, arg1 string) (*gocloak.User, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetUser", arg0)
+	ret := m.ctrl.Call(m, "GetUser", arg0, arg1)
 	ret0, _ := ret[0].(*gocloak.User)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // GetUser indicates an expected call of GetUser.
-func (mr *MockKeycloakMockRecorder) GetUser(arg0 interface{}) *gomock.Call {
+func (mr *MockKeycloakMockRecorder) GetUser(arg0, arg1 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetUser", reflect.TypeOf((*MockKeycloak)(nil).GetUser), arg0)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetUser", reflect.TypeOf((*MockKeycloak)(nil).GetUser), arg0, arg1)
 }
 
 // GetUserGroups mocks base method.
-func (m *MockKeycloak) GetUserGroups(arg0 string) ([]*gocloak.Group, error) {
+func (m *MockKeycloak) GetUserGroups(arg0 context.Context, arg1 string) ([]*gocloak.Group, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetUserGroups", arg0)
+	ret := m.ctrl.Call(m, "GetUserGroups", arg0, arg1)
 	ret0, _ := ret[0].([]*gocloak.Group)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // GetUserGroups indicates an expected call of GetUserGroups.
-func (mr *MockKeycloakMockRecorder) GetUserGroups(arg0 interface{}) *gomock.Call {
+func (mr *MockKeycloakMockRecorder) GetUserGroups(arg0, arg1 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetUserGroups", reflect.TypeOf((*MockKeycloak)(nil).GetUserGroups), arg0)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetUserGroups", reflect.TypeOf((*MockKeycloak)(nil).GetUserGroups), arg0, arg1)
 }
 
 // GetUserID mocks base method.
@@ -150,33 +151,33 @@ func (mr *MockKeycloakMockRecorder) GetUserID() *gomock.Call {
 }
 
 // GetUserInfo mocks base method.
-func (m *MockKeycloak) GetUserInfo() (*gocloak.UserInfo, error) {
+func (m *MockKeycloak) GetUserInfo(arg0 context.Context) (*gocloak.UserInfo, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetUserInfo")
+	ret := m.ctrl.Call(m, "GetUserInfo", arg0)
 	ret0, _ := ret[0].(*gocloak.UserInfo)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // GetUserInfo indicates an expected call of GetUserInfo.
-func (mr *MockKeycloakMockRecorder) GetUserInfo() *gomock.Call {
+func (mr *MockKeycloakMockRecorder) GetUserInfo(arg0 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetUserInfo", reflect.TypeOf((*MockKeycloak)(nil).GetUserInfo))
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetUserInfo", reflect.TypeOf((*MockKeycloak)(nil).GetUserInfo), arg0)
 }
 
 // GetUsers mocks base method.
-func (m *MockKeycloak) GetUsers() ([]*gocloak.User, error) {
+func (m *MockKeycloak) GetUsers(arg0 context.Context) ([]*gocloak.User, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetUsers")
+	ret := m.ctrl.Call(m, "GetUsers", arg0)
 	ret0, _ := ret[0].([]*gocloak.User)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // GetUsers indicates an expected call of GetUsers.
-func (mr *MockKeycloakMockRecorder) GetUsers() *gomock.Call {
+func (mr *MockKeycloakMockRecorder) GetUsers(arg0 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetUsers", reflect.TypeOf((*MockKeycloak)(nil).GetUsers))
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetUsers", reflect.TypeOf((*MockKeycloak)(nil).GetUsers), arg0)
 }
 
 // IsRole mocks base method.

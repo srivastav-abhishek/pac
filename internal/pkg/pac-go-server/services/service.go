@@ -26,7 +26,6 @@ const maxServiceNameLength = 50
 
 var dbCon db.DB
 var kubeClient kubernetes.Client
-var keyCloakClient client.Keycloak
 
 func SetDB(db db.DB) {
 	dbCon = db
@@ -34,10 +33,6 @@ func SetDB(db db.DB) {
 
 func SetKubeClient(client kubernetes.Client) {
 	kubeClient = client
-}
-
-func SetKeyCloakClient(kc client.Keycloak) {
-	keyCloakClient = kc
 }
 
 func GetAllServicesHandler(c *gin.Context) {
@@ -54,7 +49,7 @@ func getAllServices(c *gin.Context) ([]models.Service, error) {
 	var services pac.ServiceList
 	var err error
 
-	kc := client.NewKeyClockClient(c.Request.Context())
+	kc := client.NewKeyCloakClientFromContext(c.Request.Context())
 	userId := kc.GetUserID()
 
 	listAllServices := c.DefaultQuery("all", "false")
@@ -94,7 +89,7 @@ func GetService(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("%v", err)})
 		return
 	}
-	kc := client.NewKeyClockClient(c.Request.Context())
+	kc := client.NewKeyCloakClientFromContext(c.Request.Context())
 	userId := kc.GetUserID()
 
 	// should not return service if the user is not admin or not owner of service
@@ -150,7 +145,7 @@ func CreateService(c *gin.Context) {
 	}
 
 	// fetch userId
-	kc := client.NewKeyClockClient(c.Request.Context())
+	kc := client.NewKeyCloakClientFromContext(c.Request.Context())
 	userId := kc.GetUserID()
 	logger.Debug("user id", zap.String("userid", userId))
 
@@ -243,7 +238,7 @@ func deleteService(c *gin.Context, serviceName string) error {
 		logger.Error("service name is not set")
 		return fmt.Errorf("error : %s", "service name is not set")
 	}
-	kc := client.NewKeyClockClient(c.Request.Context())
+	kc := client.NewKeyCloakClientFromContext(c.Request.Context())
 	userId := kc.GetUserID()
 
 	//allow admin to delete the not owned services as well

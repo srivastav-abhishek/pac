@@ -17,7 +17,7 @@ import (
 
 func TestGetAllServices(t *testing.T) {
 	gin.SetMode(gin.TestMode)
-	mockClient, _, _, tearDown := setUp(t)
+	mockClient, _, mockKCClient, tearDown := setUp(t)
 	defer tearDown()
 
 	testcases := []struct {
@@ -30,9 +30,9 @@ func TestGetAllServices(t *testing.T) {
 			name: "get all services succesfully",
 			mockFunc: func() {
 				mockClient.EXPECT().GetServices(gomock.Any()).Return(getResource("get-all-services", nil).(pac.ServiceList), nil).Times(1)
+				mockKCClient.EXPECT().GetUserID().Return("12345").Times(1)
 			},
 			requestContext: formContext(customValues{
-				"userid":                "12345",
 				"keycloak_hostname":     "127.0.0.1",
 				"keycloak_access_token": "Bearer test-token",
 				"keycloak_realm":        "test-pac",
@@ -59,7 +59,7 @@ func TestGetAllServices(t *testing.T) {
 
 func TestGetService(t *testing.T) {
 	gin.SetMode(gin.TestMode)
-	mockClient, _, _, tearDown := setUp(t)
+	mockClient, _, mockKCClient, tearDown := setUp(t)
 	defer tearDown()
 
 	testcases := []struct {
@@ -73,13 +73,11 @@ func TestGetService(t *testing.T) {
 			name: "get service succesfully",
 			mockFunc: func() {
 				mockClient.EXPECT().GetService(gomock.Any()).Return(getResource("get-service", nil).(pac.Service), nil).Times(1)
+				mockKCClient.EXPECT().GetUserID().Return("12345").Times(1)
+				mockKCClient.EXPECT().IsRole(gomock.Any()).Return(true).Times(1)
 			},
 			requestParams: gin.Param{Key: "name", Value: "test-service"},
 			httpStatus:    http.StatusOK,
-			requestContext: formContext(customValues{
-				"userid": "12345",
-				"roles":  []string{"manager"},
-			}),
 		},
 		{
 			name:          "service name not set",
@@ -116,7 +114,7 @@ func TestGetService(t *testing.T) {
 
 func TestCreateService(t *testing.T) {
 	gin.SetMode(gin.TestMode)
-	mockClient, mockDBClient, _, tearDown := setUp(t)
+	mockClient, mockDBClient, mockKCClient, tearDown := setUp(t)
 	defer tearDown()
 	testcases := []struct {
 		name           string
@@ -131,12 +129,12 @@ func TestCreateService(t *testing.T) {
 				mockClient.EXPECT().GetCatalog(gomock.Any()).Return(getResource("get-catalog", nil).(pac.Catalog), nil).Times(2)
 				mockClient.EXPECT().CreateService(gomock.Any()).Return(nil).Times(1)
 				mockClient.EXPECT().GetServices(gomock.Any()).Return(getResource("get-all-services", nil).(pac.ServiceList), nil).Times(1)
+				mockKCClient.EXPECT().GetUserID().Return("122344").Times(2)
 				mockDBClient.EXPECT().GetKeyByUserID(gomock.Any()).Return(getResource("get-key-by-userid", nil).([]models.Key), nil).Times(1)
 				mockDBClient.EXPECT().GetGroupsQuota(gomock.Any()).Return(getResource("get-groups-quota", nil).([]models.Quota), nil).Times(1)
 			},
 			service: getResource("create-service", nil).(models.Service),
 			requestContext: formContext(customValues{
-				"userid":                "122343",
 				"keycloak_hostname":     "127.0.0.1",
 				"keycloak_access_token": "Bearer test-token",
 				"keycloak_realm":        "test-pac",
@@ -174,7 +172,7 @@ func TestCreateService(t *testing.T) {
 
 func TestDeleteService(t *testing.T) {
 	gin.SetMode(gin.TestMode)
-	mockClient, mockDBClient, _, tearDown := setUp(t)
+	mockClient, mockDBClient, mockKCClient, tearDown := setUp(t)
 	defer tearDown()
 	testcases := []struct {
 		name           string
@@ -186,13 +184,11 @@ func TestDeleteService(t *testing.T) {
 		{
 			name: "delete service succesfully",
 			mockFunc: func() {
+				mockKCClient.EXPECT().GetUserID().Return("12345").Times(1)
+				mockKCClient.EXPECT().IsRole(gomock.Any()).Return(true).Times(1)
 				mockClient.EXPECT().DeleteService(gomock.Any(), gomock.Any()).Return(nil).Times(1)
 				mockDBClient.EXPECT().GetRequestByServiceName(gomock.Any()).Return(getResource("get-request-by-service-name", nil).([]models.Request), nil).Times(1)
 			},
-			requestContext: formContext(customValues{
-				"userid": "12345",
-				"roles":  []string{"manager"},
-			}),
 			requestParams: gin.Param{Key: "name", Value: "test-service"},
 			httpStatus:    http.StatusNoContent,
 		},

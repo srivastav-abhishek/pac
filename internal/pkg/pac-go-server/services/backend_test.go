@@ -44,9 +44,16 @@ func setUp(t testing.TB) (mockedKubeClient *kubernetes.MockClient, mockedDBClien
 	ctrlKeyCloak := gomock.NewController(t)
 	mockKeyCloakClient := client.NewMockKeycloak(ctrlKeyCloak)
 
+	newKCClient := client.NewKeyCloakClientFromContext
+	client.NewKeyCloakClientFromContext = func(ctx context.Context) client.Keycloak {
+		return mockKeyCloakClient
+	}
+
 	return mockkubeclient, mockDBClient, mockKeyCloakClient, func() {
 		ctrlKube.Finish()
 		ctrlDB.Finish()
+		ctrlKeyCloak.Finish()
+		client.NewKeyCloakClientFromContext = newKCClient
 	}
 }
 
@@ -387,8 +394,8 @@ func getResource(apiType string, customValues map[string]interface{}) interface{
 		key := models.Key{
 			ID:      [12]byte{1},
 			UserID:  "12345",
-			Name:    "test-key",
-			Content: "content",
+			Name:    "test-key-1",
+			Content: "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQDwsjnatgg0vKTA5XbpTs2wkNcXvdVrRR4+q2QbLvJCC1gKSXhF3iSHwhxEJyaRhErqHDD2XTLd72+fuuiM7GOmaVtEQA+gyu19aEsMCKD7giqWf9XD01WysGckgxNPTKy4XcSARg+aspk98vydsN29IZc7SFModvhMONoOTPhp+VUxX5wLXBmA/Cnsz5xlaLKxPPjhrX95W2AT7YIQcSosvnKYC6boct/TFGFqkbC/v735+7Da39rwHvJ74ygLCUKq70ytI7bL1/10A8lsCuVSiEkZKNqkkiMqXO9rbY6Hpj7hm0qJ1VwgOozD4MX9YCRsItdXMJXHrZOp1QNVnTIf test@example.com",
 		}
 		// Update key with custom values if provided
 		for key, value := range customValues {
@@ -502,6 +509,14 @@ func getResource(apiType string, customValues map[string]interface{}) interface{
 			Notified:    false,
 		}
 		return []models.Event{event}
+	case "get-all-users":
+		user := gocloak.User{
+			ID:        utils.Ptr("12345"),
+			Username:  utils.Ptr("test-user"),
+			FirstName: utils.Ptr("firstname"),
+			LastName:  utils.Ptr("lastname"),
+		}
+		return []*gocloak.User{&user}
 	default:
 		return nil
 	}

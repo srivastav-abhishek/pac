@@ -17,7 +17,7 @@ import (
 
 func TestGetAllRequest(t *testing.T) {
 	gin.SetMode(gin.TestMode)
-	_, mockDBClient, _, tearDown := setUp(t)
+	_, mockDBClient, mockKCClient, tearDown := setUp(t)
 	defer tearDown()
 
 	testcases := []struct {
@@ -30,6 +30,7 @@ func TestGetAllRequest(t *testing.T) {
 			name: "get all requests successfully",
 			mockFunc: func() {
 				mockDBClient.EXPECT().GetRequestsByUserID(gomock.Any(), gomock.Any()).Return(getResource("get-requests-by-user-id", nil).([]models.Request), nil).Times(1)
+				mockKCClient.EXPECT().IsRole(gomock.Any()).Return(true).AnyTimes()
 			},
 			requestContext: formContext(customValues{
 				"userid": "12345",
@@ -174,7 +175,7 @@ func TestNewGroupRequest(t *testing.T) {
 		{
 			name: "group request created successfully",
 			mockFunc: func() {
-				mockKCClient.EXPECT().GetGroups().Return(getResource("get-group-info", nil).([]*gocloak.Group), nil).AnyTimes()
+				mockKCClient.EXPECT().GetGroups(gomock.Any()).Return(getResource("get-group-info", nil).([]*gocloak.Group), nil).AnyTimes()
 				mockDBClient.EXPECT().GetRequestByGroupIDAndUserID(gomock.Any(), gomock.Any()).Return(getResource("get-requests-by-user-id", nil).([]models.Request), nil).AnyTimes()
 				mockDBClient.EXPECT().NewRequest(gomock.Any()).Return("123", nil).Times(1)
 				mockDBClient.EXPECT().NewEvent(gomock.Any()).Times(1)
@@ -210,7 +211,6 @@ func TestNewGroupRequest(t *testing.T) {
 			c.Request = req.WithContext(ctx)
 			c.Params = gin.Params{tc.requestParams}
 			dbCon = mockDBClient
-			keyCloakClient = mockKCClient
 			NewGroupRequest(c)
 			assert.Equal(t, tc.httpStatus, c.Writer.Status())
 		})
@@ -260,7 +260,6 @@ func TestNewGroupRequest(t *testing.T) {
 // 			c.Request = req.WithContext(ctx)
 // 			c.Params = gin.Params{tc.requestParams}
 // 			dbCon = mockDBClient
-// 			keyCloakClient = mockKCClient
 // 			ExitGroup(c)
 // 			assert.Equal(t, tc.httpStatus, c.Writer.Status())
 // 		})
@@ -269,7 +268,7 @@ func TestNewGroupRequest(t *testing.T) {
 
 func TestDeleteUser(t *testing.T) {
 	gin.SetMode(gin.TestMode)
-	mockClient, mockDBClient, _, tearDown := setUp(t)
+	mockClient, mockDBClient, mockKCClient, tearDown := setUp(t)
 	defer tearDown()
 
 	testcases := []struct {
@@ -282,14 +281,16 @@ func TestDeleteUser(t *testing.T) {
 		{
 			name: "request to delete user created successfully",
 			mockFunc: func() {
-				mockClient.EXPECT().GetServices(gomock.Any()).Return(getResource("get-all-services", nil).(pac.ServiceList), nil).AnyTimes()
-				mockClient.EXPECT().DeleteService(gomock.Any(), gomock.Any()).Return(nil).AnyTimes()
-				mockDBClient.EXPECT().GetRequestByServiceName(gomock.Any()).Return(getResource("get-request-by-service-name", nil).([]models.Request), nil).AnyTimes()
-				mockDBClient.EXPECT().GetKeyByUserID(gomock.Any()).Return(getResource("get-key-by-userid", nil).([]models.Key), nil).AnyTimes()
-				mockDBClient.EXPECT().GetKeyByID(gomock.Any()).Return(getResource("get-key-by-id", nil).(*models.Key), nil).AnyTimes()
+				mockClient.EXPECT().GetServices(gomock.Any()).Return(getResource("get-all-services", nil).(pac.ServiceList), nil).Times(1)
+				mockClient.EXPECT().DeleteService(gomock.Any(), gomock.Any()).Return(nil).Times(1)
+				mockDBClient.EXPECT().GetRequestByServiceName(gomock.Any()).Return(getResource("get-request-by-service-name", nil).([]models.Request), nil).Times(1)
+				mockDBClient.EXPECT().GetKeyByUserID(gomock.Any()).Return(getResource("get-key-by-userid", nil).([]models.Key), nil).Times(1)
+				mockDBClient.EXPECT().GetKeyByID(gomock.Any()).Return(getResource("get-key-by-id", nil).(*models.Key), nil).Times(1)
 				mockDBClient.EXPECT().DeleteKey(gomock.Any()).Return(nil).AnyTimes()
 				mockDBClient.EXPECT().NewRequest(gomock.Any()).Return("123", nil).AnyTimes()
 				mockDBClient.EXPECT().NewEvent(gomock.Any()).AnyTimes()
+				mockKCClient.EXPECT().GetUserID().Return("12345").Times(2)
+				mockKCClient.EXPECT().IsRole(gomock.Any()).Return(true).Times(2)
 			},
 			httpStatus: http.StatusCreated,
 			request:    getResource("get-request-by-id", nil).(*models.Request),
@@ -299,8 +300,17 @@ func TestDeleteUser(t *testing.T) {
 			}),
 		},
 		{
-			name:       "not authorized to delete key",
-			mockFunc:   func() {},
+			name: "not authorized to delete key",
+			mockFunc: func() {
+				mockClient.EXPECT().GetServices(gomock.Any()).Return(getResource("get-all-services", nil).(pac.ServiceList), nil).Times(1)
+				mockClient.EXPECT().DeleteService(gomock.Any(), gomock.Any()).Return(nil).Times(1)
+				mockDBClient.EXPECT().GetRequestByServiceName(gomock.Any()).Return(getResource("get-request-by-service-name", nil).([]models.Request), nil).Times(1)
+				mockDBClient.EXPECT().GetKeyByUserID(gomock.Any()).Return(getResource("get-key-by-userid", nil).([]models.Key), nil).Times(1)
+				mockDBClient.EXPECT().GetKeyByID(gomock.Any()).Return(getResource("get-key-by-id", nil).(*models.Key), nil).Times(1)
+				mockDBClient.EXPECT().DeleteKey(gomock.Any()).Return(nil).AnyTimes()
+				mockKCClient.EXPECT().GetUserID().Return("12345").Times(3)
+				mockKCClient.EXPECT().IsRole(gomock.Any()).Return(false).Times(3)
+			},
 			httpStatus: http.StatusInternalServerError,
 			request:    getResource("get-request-by-id", nil).(*models.Request),
 		},
@@ -326,7 +336,7 @@ func TestDeleteUser(t *testing.T) {
 
 func TestApproveRequest(t *testing.T) {
 	gin.SetMode(gin.TestMode)
-	mockClient, mockDBClient, _, tearDown := setUp(t)
+	mockClient, mockDBClient, mockKCClient, tearDown := setUp(t)
 	defer tearDown()
 
 	testcases := []struct {
@@ -339,6 +349,7 @@ func TestApproveRequest(t *testing.T) {
 		{
 			name: "successfully approved request",
 			mockFunc: func() {
+				mockKCClient.EXPECT().IsRole(gomock.Any()).Return(true).Times(1)
 				mockDBClient.EXPECT().GetRequestByID(gomock.Any()).Return(getResource("get-request-by-id", nil).(*models.Request), nil).Times(1)
 				mockClient.EXPECT().UpdateServiceExpiry(gomock.Any(), gomock.Any()).Return(nil).Times(1)
 				mockDBClient.EXPECT().UpdateRequestState(gomock.Any(), gomock.Any()).Return(nil).Times(1)
@@ -351,8 +362,10 @@ func TestApproveRequest(t *testing.T) {
 			}),
 		},
 		{
-			name:       "not authorized to approve request",
-			mockFunc:   func() {},
+			name: "not authorized to approve request",
+			mockFunc: func() {
+				mockKCClient.EXPECT().IsRole(gomock.Any()).Return(false).Times(1)
+			},
 			httpStatus: http.StatusUnauthorized,
 		},
 	}
@@ -377,7 +390,7 @@ func TestApproveRequest(t *testing.T) {
 
 func TestRejectRequest(t *testing.T) {
 	gin.SetMode(gin.TestMode)
-	_, mockDBClient, _, tearDown := setUp(t)
+	_, mockDBClient, mockKCClient, tearDown := setUp(t)
 	defer tearDown()
 
 	testcases := []struct {
@@ -390,7 +403,8 @@ func TestRejectRequest(t *testing.T) {
 		{
 			name: "successfully rejected request",
 			mockFunc: func() {
-				mockDBClient.EXPECT().GetRequestByID(gomock.Any()).Return(getResource("get-request-by-id", nil).(*models.Request), nil).AnyTimes()
+				mockKCClient.EXPECT().IsRole(gomock.Any()).Return(true).Times(2)
+				mockDBClient.EXPECT().GetRequestByID(gomock.Any()).Return(getResource("get-request-by-id", nil).(*models.Request), nil).Times(1)
 				mockDBClient.EXPECT().UpdateRequestStateWithComment(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil).Times(1)
 				mockDBClient.EXPECT().NewEvent(gomock.Any()).Times(1)
 			},
@@ -412,8 +426,10 @@ func TestRejectRequest(t *testing.T) {
 			request: getResource("get-request-by-id", nil).(*models.Request),
 		},
 		{
-			name:       "not authorized to approve request",
-			mockFunc:   func() {},
+			name: "not authorized to approve request",
+			mockFunc: func() {
+				mockKCClient.EXPECT().IsRole(gomock.Any()).Return(false).Times(1)
+			},
 			httpStatus: http.StatusUnauthorized,
 		},
 	}
@@ -440,7 +456,7 @@ func TestRejectRequest(t *testing.T) {
 
 func TestDeleteRequest(t *testing.T) {
 	gin.SetMode(gin.TestMode)
-	_, mockDBClient, _, tearDown := setUp(t)
+	_, mockDBClient, mockKCClient, tearDown := setUp(t)
 	defer tearDown()
 
 	testcases := []struct {
@@ -453,19 +469,21 @@ func TestDeleteRequest(t *testing.T) {
 		{
 			name: "successfully deleted request",
 			mockFunc: func() {
-				mockDBClient.EXPECT().GetRequestByID(gomock.Any()).Return(getResource("get-request-by-id", nil).(*models.Request), nil).AnyTimes()
+				mockDBClient.EXPECT().GetRequestByID(gomock.Any()).Return(getResource("get-request-by-id", nil).(*models.Request), nil).Times(1)
+				mockKCClient.EXPECT().GetUserID().Return("12345").Times(1)
+				mockKCClient.EXPECT().IsRole(gomock.Any()).Return(true).Times(1)
 				mockDBClient.EXPECT().DeleteRequest(gomock.Any()).Return(nil).Times(1)
 				mockDBClient.EXPECT().NewEvent(gomock.Any()).Times(1)
 			},
 			httpStatus: http.StatusNoContent,
-			requestContext: formContext(customValues{
-				"userid": "12345",
-				"roles":  []string{"manager"},
-			}),
 		},
 		{
-			name:       "not authorized to approve request",
-			mockFunc:   func() {},
+			name: "not authorized to approve request",
+			mockFunc: func() {
+				mockDBClient.EXPECT().GetRequestByID(gomock.Any()).Return(getResource("get-request-by-id", nil).(*models.Request), nil).Times(1)
+				mockKCClient.EXPECT().GetUserID().Return("1234").Times(1)
+				mockKCClient.EXPECT().IsRole(gomock.Any()).Return(false).Times(1)
+			},
 			httpStatus: http.StatusUnauthorized,
 		},
 	}
@@ -473,9 +491,6 @@ func TestDeleteRequest(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			tc.mockFunc()
 			c, _ := gin.CreateTestContext(httptest.NewRecorder())
-			if tc.name == "comment required to reject request" {
-				tc.request.Comment = ""
-			}
 			marshalledRequest, _ := json.Marshal(tc.request)
 			req, err := http.NewRequest(http.MethodPost, "/requests", bytes.NewBuffer(marshalledRequest))
 			if err != nil {
