@@ -6,11 +6,9 @@ import (
 	"net/http"
 	"time"
 
-	log "github.com/PDeXchange/pac/internal/pkg/pac-go-server/logger"
 	"github.com/PDeXchange/pac/internal/pkg/pac-go-server/models"
 	"github.com/gin-gonic/gin"
 	"go.mongodb.org/mongo-driver/mongo"
-	"go.uber.org/zap"
 )
 
 func GetTermsAndConditionsStatus(c *gin.Context) {
@@ -27,14 +25,12 @@ func GetTermsAndConditionsStatus(c *gin.Context) {
 }
 
 func AcceptTermsAndConditions(c *gin.Context) {
-	logger := log.GetLogger()
 	userID := c.Request.Context().Value("userid").(string)
 	tnc, err := dbCon.GetTermsAndConditionsByUserID(userID)
 	if err != nil && errors.Unwrap(err) != mongo.ErrNoDocuments {
 		c.JSON(http.StatusBadRequest, gin.H{"error": fmt.Sprint("failed to get terms and conditions status: ", err.Error())})
 		return
 	}
-	logger.Info("response", zap.Any("accepted", tnc.Accepted))
 	if tnc != nil && tnc.Accepted {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "terms and conditions already accepted"})
 		return
