@@ -29,18 +29,6 @@ type testContext struct {
 	username            string
 }
 
-type contextKeys string
-
-const (
-	userid              contextKeys = "userid"
-	keycloakHostname    contextKeys = "keycloak_hostname"
-	keyCloakAccessToken contextKeys = "keycloak_access_token"
-	keyCloakRealm       contextKeys = "keycloak_realm"
-	groups              contextKeys = "groups"
-	username            contextKeys = "username"
-	roles               contextKeys = "roles"
-)
-
 type customValues = map[string]interface{}
 
 // return new mockclients and tearDown to release resource
@@ -535,13 +523,13 @@ func getResource(apiType string, customValues map[string]interface{}) interface{
 }
 
 func getContext(requestCtx testContext) context.Context {
-	ctx := context.WithValue(context.Background(), userid, requestCtx.userID)
-	ctx = context.WithValue(ctx, keycloakHostname, requestCtx.keyCloakHostname)
-	ctx = context.WithValue(ctx, keyCloakAccessToken, requestCtx.keyCloakAccessToken)
-	ctx = context.WithValue(ctx, keyCloakRealm, requestCtx.keyCloakRealm)
-	ctx = context.WithValue(ctx, groups, requestCtx.groups)
-	ctx = context.WithValue(ctx, username, requestCtx.username)
-	ctx = context.WithValue(ctx, roles, requestCtx.roles)
+	ctx := context.WithValue(context.Background(), "userid", requestCtx.userID)
+	ctx = context.WithValue(ctx, "keycloak_hostname", requestCtx.keyCloakHostname)
+	ctx = context.WithValue(ctx, "keycloak_access_token", requestCtx.keyCloakAccessToken)
+	ctx = context.WithValue(ctx, "keycloak_realm", requestCtx.keyCloakRealm)
+	ctx = context.WithValue(ctx, "groups", requestCtx.groups)
+	ctx = context.WithValue(ctx, "username", requestCtx.username)
+	ctx = context.WithValue(ctx, "roles", requestCtx.roles)
 	return ctx
 }
 
