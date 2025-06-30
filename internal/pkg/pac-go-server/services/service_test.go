@@ -150,6 +150,28 @@ func TestCreateService(t *testing.T) {
 			}),
 			httpStatus: http.StatusCreated,
 		},
+		{
+			name: "catalog is retired",
+			mockFunc: func() {
+				mockClient.EXPECT().GetCatalog(gomock.Any()).Return(getResource("get-catalog", nil).(pac.Catalog), nil).Times(2)
+				mockKCClient.EXPECT().GetUserID().Return("122344").Times(2)
+				mockDBClient.EXPECT().GetKeyByUserID(gomock.Any()).Return(getResource("get-key-by-userid", nil).([]models.Key), nil).Times(1)
+				mockClient.EXPECT().GetServices(gomock.Any()).Return(getResource("get-all-services", nil).(pac.ServiceList), nil).Times(1)
+			},
+			service:    getResource("create-service", customValues{"retired": "true"}).(models.Service),
+			httpStatus: http.StatusBadRequest,
+		},
+		{
+			name: "catalog not ready",
+			mockFunc: func() {
+				mockClient.EXPECT().GetCatalog(gomock.Any()).Return(getResource("get-catalog", nil).(pac.Catalog), nil).Times(2)
+				mockKCClient.EXPECT().GetUserID().Return("122344").Times(2)
+				mockDBClient.EXPECT().GetKeyByUserID(gomock.Any()).Return(getResource("get-key-by-userid", nil).([]models.Key), nil).Times(1)
+				mockClient.EXPECT().GetServices(gomock.Any()).Return(getResource("get-all-services", nil).(pac.ServiceList), nil).Times(1)
+			},
+			service:    getResource("create-service", customValues{"ready": "false"}).(models.Service),
+			httpStatus: http.StatusBadRequest,
+		},
 	}
 	for _, tc := range testcases {
 		t.Run(tc.name, func(t *testing.T) {

@@ -217,7 +217,6 @@ func NewGroupRequest(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("failed to fetch the requested record from the db, err: %s", err.Error())})
 		return
 	}
-	logger.Info("fetched request", zap.Any("request", r))
 	for _, request := range r {
 		if request.State == models.RequestStateNew {
 			logger.Debug("user is already requested access to this group", zap.String("group", *grp.Name), zap.Any("request", r))
@@ -301,7 +300,7 @@ func ExitGroup(c *gin.Context) {
 	logger.Debug("fetched group", zap.Any("groups", grp))
 
 	if !models.IsMemberOfGroup(c.Request.Context(), *grp.Name) {
-		logger.Info("user is not member of group", zap.String("user", username), zap.String("group", *grp.Name))
+		logger.Debug("user is not member of group", zap.String("user", username), zap.String("group", *grp.Name))
 		c.JSON(http.StatusBadRequest, gin.H{"error": "You are already not a member of this group."})
 		return
 	}
