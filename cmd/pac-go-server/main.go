@@ -3,6 +3,7 @@ package main
 import (
 	"time"
 
+	_ "github.com/PDeXchange/pac/docs"
 	flag "github.com/spf13/pflag"
 	"go.uber.org/zap"
 
@@ -29,6 +30,10 @@ func initFlags() {
 	flag.Parse()
 }
 
+// @title Pac-go-server APIs
+// @description Go-server for PAC backend apis in gin
+// @host localhost:8000
+// BasePath /api/v1
 func main() {
 	logger := log.GetLogger()
 	logger.Info("Starting PAC server...")
