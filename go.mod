@@ -24,6 +24,9 @@ require (
 	github.com/sendgrid/sendgrid-go v3.16.1+incompatible
 	github.com/spf13/pflag v1.0.7
 	github.com/stretchr/testify v1.10.0
+	github.com/swaggo/files v1.0.1
+	github.com/swaggo/gin-swagger v1.6.0
+	github.com/swaggo/swag v1.16.3
 	github.com/tbaehler/gin-keycloak v1.6.1
 	go.mongodb.org/mongo-driver v1.17.4
 	go.uber.org/zap v1.27.0
@@ -36,6 +39,7 @@ require (
 )
 
 require (
+	github.com/KyleBanks/depth v1.2.1 // indirect
 	github.com/Nerzal/gocloak/v11 v11.2.0 // indirect
 	github.com/asaskevich/govalidator v0.0.0-20230301143203-a9d515a09cc2 // indirect
 	github.com/beorn7/perks v1.0.1 // indirect
