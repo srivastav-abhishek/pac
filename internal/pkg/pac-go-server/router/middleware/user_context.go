@@ -2,6 +2,7 @@ package middleware
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net/http"
 
@@ -11,21 +12,21 @@ import (
 	"github.com/PDeXchange/pac/internal/pkg/pac-go-server/utils"
 )
 
-func fetchAndSetUserInfo(c *gin.Context, ctx context.Context, accessToken string) {
-	user, err := kcClient.GetUserInfo(ctx, accessToken, realm)
+func fetchAndSetUserInfo(ctx *context.Context, accessToken string) error {
+	user, err := kcClient.GetUserInfo(*ctx, accessToken, realm)
 	if err != nil {
-		c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-		return
+		return err
 	}
-	utils.SetContext(&ctx, "username", *user.PreferredUsername)
-	utils.SetContext(&ctx, "userid", *user.Sub)
+	utils.SetContext(ctx, "username", *user.PreferredUsername)
+	utils.SetContext(ctx, "userid", *user.Sub)
+
+	return nil
 }
 
-func fetchAndSetUserGroups(c *gin.Context, ctx context.Context, accessToken string) {
-	groups, err := kcClient.GetAccountGroups(ctx, accessToken, realm)
+func fetchAndSetUserGroups(ctx *context.Context, accessToken string) error {
+	groups, err := kcClient.GetAccountGroups(*ctx, accessToken, realm)
 	if err != nil {
-		c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("failed to get groups of a user: %s", err.Error())})
-		return
+		return fmt.Errorf("failed to get groups of a user: %w", err)
 	}
 
 	var grps []models.Group
@@ -33,24 +34,25 @@ func fetchAndSetUserGroups(c *gin.Context, ctx context.Context, accessToken stri
 		grps = append(grps, models.Group{ID: *group.ID, Name: *group.Name})
 	}
 
-	utils.SetContext(&ctx, "groups", grps)
+	utils.SetContext(ctx, "groups", grps)
+
+	return nil
 }
 
-func fetchAndSetRoles(c *gin.Context, ctx context.Context, accessToken string) {
-	_, claim, err := kcClient.DecodeAccessToken(ctx, accessToken, realm)
+func fetchAndSetRoles(ctx *context.Context, accessToken string) error {
+	_, claim, err := kcClient.DecodeAccessToken(*ctx, accessToken, realm)
 	if err != nil {
-		c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("failed to parse the access token: %s", err.Error())})
-		return
+		return fmt.Errorf("failed to parse the access token: %w", err)
 	}
 
 	getRoles := func() ([]string, error) {
 		realmAccess, ok := (*claim)["realm_access"].(map[string]interface{})
 		if !ok {
-			return nil, fmt.Errorf("no realm_access in token")
+			return nil, errors.New("no realm_access in token")
 		}
 		roles, ok := realmAccess["roles"].([]interface{})
 		if !ok {
-			return nil, fmt.Errorf("no roles in realm_access")
+			return nil, errors.New("no roles in realm_access")
 		}
 		var rolesList []string
 		for _, role := range roles {
@@ -60,11 +62,12 @@ func fetchAndSetRoles(c *gin.Context, ctx context.Context, accessToken string) {
 	}
 
 	if roles, err := getRoles(); err != nil {
-		c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("failed to get roles of a user: %s", err.Error())})
-		return
+		return fmt.Errorf("failed to get roles of a user: %w", err)
 	} else {
-		utils.SetContext(&ctx, "roles", roles)
+		utils.SetContext(ctx, "roles", roles)
 	}
+
+	return nil
 }
 
 func SetUserContexts(c *gin.Context) {
@@ -76,11 +79,20 @@ func SetUserContexts(c *gin.Context) {
 
 	accessToken := ctx.Value("keycloak_access_token").(string)
 
-	fetchAndSetUserInfo(c, ctx, accessToken)
+	if err := fetchAndSetUserInfo(&ctx, accessToken); err != nil {
+		c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
 
-	fetchAndSetUserGroups(c, ctx, accessToken)
+	if err := fetchAndSetUserGroups(&ctx, accessToken); err != nil {
+		c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
 
-	fetchAndSetRoles(c, ctx, accessToken)
+	if err := fetchAndSetRoles(&ctx, accessToken); err != nil {
+		c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
 
 	// Replace the request context with the new context
 	c.Request = c.Request.WithContext(ctx)
