@@ -3,6 +3,7 @@ package client
 import (
 	"context"
 	"errors"
+	"slices"
 
 	"github.com/Nerzal/gocloak/v13"
 )
@@ -70,13 +71,7 @@ func (k *KeyClockClient) DeleteUser(userID string) error {
 
 func (k *KeyClockClient) IsRole(name string) bool {
 	roles := k.ctx.Value("roles").([]string)
-
-	for _, role := range roles {
-		if role == name {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(roles, name)
 }
 
 func (k *KeyClockClient) GetUserID() string {

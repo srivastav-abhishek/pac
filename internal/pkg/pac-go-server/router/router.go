@@ -4,44 +4,40 @@ import (
 	"net/http"
 	"os"
 
-	"github.com/Nerzal/gocloak/v13"
 	"github.com/gin-gonic/gin"
 	"github.com/tbaehler/gin-keycloak/pkg/ginkeycloak"
 
+	"github.com/PDeXchange/pac/internal/pkg/pac-go-server/router/middleware"
 	"github.com/PDeXchange/pac/internal/pkg/pac-go-server/services"
-
-	_ "github.com/joho/godotenv/autoload"
 )
 
 var (
-	clientId     = os.Getenv("KEYCLOAK_CLIENT_ID")
-	clientSecret = os.Getenv("KEYCLOAK_CLIENT_SECRET")
-	realm        = os.Getenv("KEYCLOAK_REALM")
-	hostname     = os.Getenv("KEYCLOAK_HOSTNAME")
-	client       *gocloak.GoCloak
+	realm    = os.Getenv("KEYCLOAK_REALM")
+	hostname = os.Getenv("KEYCLOAK_HOSTNAME")
 )
 
-func init() {
-	client = gocloak.NewClient(hostname)
+// defineAdminOnlyRoutes - contains admin only routes
+func defineAdminOnlyRoutes(authorizedAdmin *gin.RouterGroup) {
+	// catalog routes
+	authorizedAdmin.POST("/catalogs", services.CreateCatalog)
+	authorizedAdmin.DELETE("/catalogs/:name", services.DeleteCatalog)
+	authorizedAdmin.PUT("/catalogs/:name/retire", services.RetireCatalog)
+
+	// group routes
+	authorizedAdmin.POST("/groups/:id/quota", services.CreateQuota)
+	authorizedAdmin.PUT("/groups/:id/quota", services.UpdateQuota)
+	authorizedAdmin.DELETE("/groups/:id/quota", services.DeleteQuota)
+
+	// request routes
+	authorizedAdmin.POST("/requests/:id/approve", services.ApproveRequest)
+	authorizedAdmin.POST("/requests/:id/reject", services.RejectRequest)
+
+	// user routes
+	authorizedAdmin.GET("/users", services.GetUsers)
+	authorizedAdmin.GET("/users/:id", services.GetUser)
 }
 
-func CreateRouter() *gin.Engine {
-	router := gin.Default()
-
-	router.GET("/ping", func(c *gin.Context) {
-		c.JSON(http.StatusOK, gin.H{"message": "pong"})
-	})
-
-	authorized := router.Group("/api/v1")
-	authorized.Use(ginkeycloak.Auth(ginkeycloak.AuthCheck(), ginkeycloak.KeycloakConfig{
-		Url:   hostname,
-		Realm: realm,
-	}))
-	authorized.Use(RetrospectKeycloakToken)
-
-	authorizedAdmin := authorized.Group("")
-	authorizedAdmin.Use(AllowAdminOnly)
-
+func defineCommonRoutes(authorized *gin.RouterGroup) {
 	// Group routes
 	authorized.GET("/groups", services.GetAllGroups)
 	authorized.GET("/groups/:id", services.GetGroup)
@@ -55,11 +51,8 @@ func CreateRouter() *gin.Engine {
 	authorized.GET("/requests", services.GetAllRequests)
 	authorized.GET("/requests/:id", services.GetRequest)
 	authorized.DELETE("/requests/:id", services.DeleteRequest)
-	authorizedAdmin.POST("/requests/:id/approve", services.ApproveRequest)
-	authorizedAdmin.POST("/requests/:id/reject", services.RejectRequest)
 
 	// key related routes
-
 	authorized.GET("/keys", services.GetAllKeysHandler)
 	authorized.GET("/keys/:id", services.GetKey)
 	authorized.POST("/keys", services.CreateKey)
@@ -70,20 +63,6 @@ func CreateRouter() *gin.Engine {
 	// List all catalogs like vm, ocp, k8s
 	authorized.GET("/catalogs", services.GetAllCatalogs)
 	authorized.GET("/catalogs/:name", services.GetCatalog)
-
-	// only for admins
-	{
-		authorizedAdmin.POST("/catalogs", services.CreateCatalog)
-		authorizedAdmin.DELETE("/catalogs/:name", services.DeleteCatalog)
-		authorizedAdmin.PUT("/catalogs/:name/retire", services.RetireCatalog)
-
-		authorizedAdmin.POST("/groups/:id/quota", services.CreateQuota)
-		authorizedAdmin.PUT("/groups/:id/quota", services.UpdateQuota)
-		authorizedAdmin.DELETE("/groups/:id/quota", services.DeleteQuota)
-
-		authorizedAdmin.GET("/users", services.GetUsers)
-		authorizedAdmin.GET("/users/:id", services.GetUser)
-	}
 
 	// user related endpoints
 	authorized.DELETE("/users", services.DeleteUser)
@@ -109,6 +88,34 @@ func CreateRouter() *gin.Engine {
 	// terms and conditions related endpoints
 	authorized.GET("/tnc", services.GetTermsAndConditionsStatus)
 	authorized.POST("/tnc", services.AcceptTermsAndConditions)
+}
+
+func CreateRouter() *gin.Engine {
+	router := gin.Default()
+
+	router.GET("/ping", func(c *gin.Context) {
+		c.JSON(http.StatusOK, gin.H{"message": "pong"})
+	})
+
+	authorized := router.Group("/api/v1")
+	authorized.Use(ginkeycloak.Auth(ginkeycloak.AuthCheck(), ginkeycloak.KeycloakConfig{
+		Url:   hostname,
+		Realm: realm,
+	}))
+
+	// Middlewares
+	authorized.Use(middleware.ValidateToken)
+	authorized.Use(middleware.SetUserContexts)
+
+	// routes for both users and admins
+	defineCommonRoutes(authorized)
+
+	authorizedAdmin := authorized.Group("")
+	// Middleware for Admin check
+	authorizedAdmin.Use(middleware.AllowAdminOnly)
+
+	// routes exclusively only for admin
+	defineAdminOnlyRoutes(authorizedAdmin)
 
 	return router
 }

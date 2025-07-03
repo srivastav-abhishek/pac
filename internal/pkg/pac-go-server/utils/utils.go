@@ -1,6 +1,7 @@
 package utils
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"strconv"
@@ -35,4 +36,12 @@ func ValidateQuotaFields(c *gin.Context, cpuCap float64, memCap int) error {
 		return errInvalidCPUMultiple
 	}
 	return nil
+}
+
+// SetContext - Used to set the value to the passed context
+func SetContext(ctx *context.Context, key, val any) {
+	if ctx == nil {
+		return
+	}
+	*ctx = context.WithValue(*ctx, key, val)
 }
