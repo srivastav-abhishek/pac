@@ -13,7 +13,6 @@ import (
 func fetchBearerToken(c *gin.Context) (string, error) {
 	authHeader := c.GetHeader("Authorization")
 	if len(authHeader) < 1 {
-		c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "Authorization header is missing"})
 		return "", errors.New("authorization header is missing")
 	}
 
@@ -40,7 +39,7 @@ func ValidateToken(c *gin.Context) {
 	}
 
 	utils.SetContext(&ctx, "keycloak_access_token", accessToken)
-	rptResult, err := kcClient.RetrospectToken(c.Request.Context(), accessToken, clientId, clientSecret, realm)
+	rptResult, err := kcClient.RetrospectToken(ctx, accessToken, clientId, clientSecret, realm)
 	if err != nil {
 		c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": err.Error()})
 		return
