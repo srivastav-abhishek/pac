@@ -64,7 +64,8 @@ func getEmailForEvent(event *models.Event) (string, error) {
 	//nolint:staticcheck
 	ctx = context.WithValue(ctx, "keycloak_access_token", token.AccessToken)
 
-	user, err := client.NewKeyCloakClientFromContext(ctx).GetUser(ctx, event.UserID)
+	config := client.GetConfigFromContext(ctx)
+	user, err := client.NewKeyCloakClient(config).GetUser(ctx, event.UserID)
 	if err != nil {
 		return "", err
 	}

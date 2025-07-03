@@ -14,7 +14,8 @@ import (
 )
 
 func AllowAdminOnly(c *gin.Context) {
-	kc := pacClient.NewKeyCloakClientFromContext(c.Request.Context())
+	config := pacClient.GetConfigFromContext(c)
+	kc := pacClient.NewKeyCloakClient(config)
 	if !kc.IsRole(utils.ManagerRole) {
 		c.AbortWithStatusJSON(http.StatusForbidden, gin.H{"error": "Not authorized to perform this action"})
 		return

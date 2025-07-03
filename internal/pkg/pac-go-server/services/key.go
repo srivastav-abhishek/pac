@@ -21,7 +21,8 @@ func GetAllKeysHandler(c *gin.Context) {
 }
 
 func getAllKeys(c *gin.Context) ([]models.Key, error) {
-	kc := client.NewKeyCloakClientFromContext(c.Request.Context())
+	config := client.GetConfigFromContext(c)
+	kc := client.NewKeyCloakClient(config)
 
 	var userID string
 	if !kc.IsRole(utils.ManagerRole) {
@@ -100,7 +101,8 @@ func DeleteKeyHandler(c *gin.Context) {
 
 func deleteKey(c *gin.Context, id string) error {
 	key, err := dbCon.GetKeyByID(id)
-	kc := client.NewKeyCloakClientFromContext(c.Request.Context())
+	config := client.GetConfigFromContext(c)
+	kc := client.NewKeyCloakClient(config)
 	if err != nil {
 		return fmt.Errorf("failed to fetch the requested record from the db, err: %w", err)
 	}

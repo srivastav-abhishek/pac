@@ -1,6 +1,7 @@
 package services
 
 import (
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -47,6 +48,10 @@ func TestGetEvents(t *testing.T) {
 			}
 			ctx := getContext(tc.requestContext)
 			c.Request = req.WithContext(ctx)
+			fmt.Printf("userid: %v\n", ctx.Value("userid"))
+			fmt.Printf("keycloak_hostname: %v\n", ctx.Value("keycloak_hostname"))
+			fmt.Printf("keycloak_access_token: %v\n", ctx.Value("keycloak_access_token"))
+			fmt.Printf("keycloak_realm: %v\n", ctx.Value("keycloak_realm"))
 			dbCon = mockDBClient
 			GetEvents(c)
 			assert.Equal(t, tc.httpStatus, c.Writer.Status())

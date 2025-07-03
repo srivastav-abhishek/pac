@@ -17,7 +17,8 @@ import (
 
 func GetAllRequests(c *gin.Context) {
 	logger := log.GetLogger()
-	kc := client.NewKeyCloakClientFromContext(c.Request.Context())
+	config := client.GetConfigFromContext(c)
+	kc := client.NewKeyCloakClient(config)
 	var requests []models.Request
 	var err error
 
@@ -464,7 +465,8 @@ func DeleteUser(c *gin.Context) {
 
 func deleteUserFromPreviousGroups(c *gin.Context, request *models.Request) {
 	logger := log.GetLogger()
-	groups, err := client.NewKeyCloakClientFromContext(c.Request.Context()).GetUserGroups(c, request.UserID)
+	config := client.GetConfigFromContext(c)
+	groups, err := client.NewKeyCloakClient(config).GetUserGroups(c, request.UserID)
 	if err != nil {
 		logger.Error("failed to get groups for user", zap.String("user id", request.UserID))
 		return
@@ -474,7 +476,7 @@ func deleteUserFromPreviousGroups(c *gin.Context, request *models.Request) {
 		if *group.ID == request.GroupAdmission.GroupID {
 			continue
 		}
-		if err := client.NewKeyCloakClientFromContext(c.Request.Context()).DeleteUserFromGroup(c, request.UserID, *group.ID); err != nil {
+		if err := client.NewKeyCloakClient(config).DeleteUserFromGroup(c, request.UserID, *group.ID); err != nil {
 			logger.Error("failed to remove user from group", zap.String("user id", request.UserID),
 				zap.String("group id", *group.ID), zap.Error(err))
 		}
@@ -484,7 +486,8 @@ func deleteUserFromPreviousGroups(c *gin.Context, request *models.Request) {
 func ApproveRequest(c *gin.Context) {
 	originator := c.Request.Context().Value("userid").(string)
 	logger := log.GetLogger()
-	kc := client.NewKeyCloakClientFromContext(c.Request.Context())
+	config := client.GetConfigFromContext(c)
+	kc := client.NewKeyCloakClient(config)
 	if !kc.IsRole(utils.ManagerRole) {
 		logger.Error("only admin can approve the requests")
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "You do not have permission to approve requests."})
@@ -501,7 +504,7 @@ func ApproveRequest(c *gin.Context) {
 	logger.Debug("fetched request", zap.Any("request", request))
 	switch request.RequestType {
 	case models.RequestAddToGroup:
-		if err := client.NewKeyCloakClientFromContext(c.Request.Context()).AddUserToGroup(c, request.UserID, request.GroupAdmission.GroupID); err != nil {
+		if err := client.NewKeyCloakClient(config).AddUserToGroup(c, request.UserID, request.GroupAdmission.GroupID); err != nil {
 			logger.Error("failed to add user to group", zap.String("user id", request.UserID),
 				zap.String("group id", request.GroupAdmission.GroupID), zap.Error(err))
 			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
@@ -509,14 +512,14 @@ func ApproveRequest(c *gin.Context) {
 		}
 		deleteUserFromPreviousGroups(c, request)
 	case models.RequestExitFromGroup:
-		if err := client.NewKeyCloakClientFromContext(c.Request.Context()).DeleteUserFromGroup(c, request.UserID, request.GroupAdmission.GroupID); err != nil {
+		if err := client.NewKeyCloakClient(config).DeleteUserFromGroup(c, request.UserID, request.GroupAdmission.GroupID); err != nil {
 			logger.Error("failed to remove user from group", zap.String("user id", request.UserID),
 				zap.String("group id", request.GroupAdmission.GroupID), zap.Error(err))
 			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 			return
 		}
 	case models.RequestDeleteUser:
-		if err := client.NewKeyCloakClientFromContext(c.Request.Context()).DeleteUser(c, request.UserID); err != nil {
+		if err := client.NewKeyCloakClient(config).DeleteUser(c, request.UserID); err != nil {
 			logger.Error("failed to delete user", zap.String("user id", request.UserID))
 			c.JSON(getKeycloakHttpStatus(err), gin.H{"error": err.Error()})
 			return
@@ -560,7 +563,8 @@ func ApproveRequest(c *gin.Context) {
 func RejectRequest(c *gin.Context) {
 	originator := c.Request.Context().Value("userid").(string)
 	logger := log.GetLogger()
-	kc := client.NewKeyCloakClientFromContext(c.Request.Context())
+	config := client.GetConfigFromContext(c)
+	kc := client.NewKeyCloakClient(config)
 	if !kc.IsRole(utils.ManagerRole) {
 		logger.Error("only admin can approve the requests")
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "You do not have permission to reject requests."})
@@ -630,7 +634,8 @@ func DeleteRequest(c *gin.Context) {
 		return
 	}
 	logger.Debug("fetched request", zap.Any("request", request))
-	kc := client.NewKeyCloakClientFromContext(c.Request.Context())
+	config := client.GetConfigFromContext(c)
+	kc := client.NewKeyCloakClient(config)
 	userID := kc.GetUserID()
 	isManagerRole := kc.IsRole(utils.ManagerRole)
 	// request can be deleted by user who created request or admin can delete

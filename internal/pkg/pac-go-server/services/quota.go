@@ -180,7 +180,8 @@ func GetUserQuota(c *gin.Context) {
 	logger := log.GetLogger()
 	var userQuota, usedQuota, availableQuota models.Capacity
 	var err error
-	kc := client.NewKeyCloakClientFromContext(c.Request.Context())
+	config := client.GetConfigFromContext(c)
+	kc := client.NewKeyCloakClient(config)
 	userID := kc.GetUserID()
 	userQuota, err = getUserQuota(c)
 	if err != nil {
@@ -229,7 +230,8 @@ func getMaxCapacity(quotas []models.Quota) models.Capacity {
 func getUserQuota(c *gin.Context) (models.Capacity, error) {
 	logger := log.GetLogger()
 	var userQuota models.Capacity
-	kc := client.NewKeyCloakClientFromContext(c.Request.Context())
+	config := client.GetConfigFromContext(c)
+	kc := client.NewKeyCloakClient(config)
 	userID := kc.GetUserID()
 	logger.Debug("getting quota for user", zap.String("user id", userID))
 	userGroups := c.Request.Context().Value("groups").([]models.Group)

@@ -27,7 +27,7 @@ type KeyCloakClient struct {
 	client *gocloak.GoCloak
 }
 
-func NewKeyCloakClient(config KeyCloakConfig) *KeyCloakClient {
+var NewKeyCloakClient = func(config KeyCloakConfig) Keycloak {
 	return &KeyCloakClient{
 		config: config,
 		client: gocloak.NewClient(config.Hostname),
@@ -88,24 +88,27 @@ func (k *KeyCloakClient) GetUserID() string {
 
 // GetConfigFromContext creates config from context
 func GetConfigFromContext(ctx context.Context) KeyCloakConfig {
-	config := KeyCloakConfig{
-		Hostname:    ctx.Value("keycloak_hostname").(string),
-		AccessToken: ctx.Value("keycloak_access_token").(string),
-		Realm:       ctx.Value("keycloak_realm").(string),
+	config := KeyCloakConfig{}
+
+	if hostname, ok := ctx.Value("keycloak_hostname").(string); ok {
+		config.Hostname = hostname
 	}
 
-	if userID := ctx.Value("userid"); userID != nil {
-		config.UserID = userID.(string)
+	if accessToken, ok := ctx.Value("keycloak_access_token").(string); ok {
+		config.AccessToken = accessToken
 	}
 
-	if roles := ctx.Value("roles"); roles != nil {
-		config.Roles = roles.([]string)
+	if realm, ok := ctx.Value("keycloak_realm").(string); ok {
+		config.Realm = realm
+	}
+
+	if userID, ok := ctx.Value("userid").(string); ok {
+		config.UserID = userID
+	}
+
+	if roles, ok := ctx.Value("roles").([]string); ok {
+		config.Roles = roles
 	}
 
 	return config
-}
-
-var NewKeyCloakClientFromContext = func(ctx context.Context) Keycloak {
-	config := GetConfigFromContext(ctx)
-	return NewKeyCloakClient(config)
 }

@@ -44,8 +44,8 @@ func setUp(t testing.TB) (mockedKubeClient *kubernetes.MockClient, mockedDBClien
 	ctrlKeyCloak := gomock.NewController(t)
 	mockKeyCloakClient := client.NewMockKeycloak(ctrlKeyCloak)
 
-	newKCClient := client.NewKeyCloakClientFromContext
-	client.NewKeyCloakClientFromContext = func(ctx context.Context) client.Keycloak {
+	newKCClient := client.NewKeyCloakClient
+	client.NewKeyCloakClient = func(config client.KeyCloakConfig) client.Keycloak {
 		return mockKeyCloakClient
 	}
 
@@ -53,7 +53,7 @@ func setUp(t testing.TB) (mockedKubeClient *kubernetes.MockClient, mockedDBClien
 		ctrlKube.Finish()
 		ctrlDB.Finish()
 		ctrlKeyCloak.Finish()
-		client.NewKeyCloakClientFromContext = newKCClient
+		client.NewKeyCloakClient = newKCClient
 	}
 }
 
