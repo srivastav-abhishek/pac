@@ -1,6 +1,7 @@
 package services
 
 import (
+	"fmt"
 	"net/http"
 
 	"github.com/PDeXchange/pac/internal/pkg/pac-go-server/client"
@@ -9,7 +10,8 @@ import (
 )
 
 func GetUsers(c *gin.Context) {
-	usrs, err := client.NewKeyClockClient(c.Request.Context()).GetUsers()
+	config := client.GetConfigFromContext(c.Request.Context())
+	usrs, err := client.NewKeyCloakClient(config, c).GetUsers()
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
@@ -37,7 +39,8 @@ func GetUsers(c *gin.Context) {
 
 func GetUser(c *gin.Context) {
 	id := c.Param("id")
-	usrs, err := client.NewKeyClockClient(c.Request.Context()).GetUsers()
+	config := client.GetConfigFromContext(c.Request.Context())
+	usrs, err := client.NewKeyCloakClient(config, c).GetUsers()
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
@@ -64,5 +67,5 @@ func GetUser(c *gin.Context) {
 			return
 		}
 	}
-	c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
+	c.JSON(http.StatusNotFound, gin.H{"error": fmt.Errorf("user: %s not found", id)})
 }
