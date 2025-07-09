@@ -1,16 +1,10 @@
 package utils
 
 import (
-	"errors"
 	"fmt"
 	"strconv"
 
 	"github.com/gin-gonic/gin"
-)
-
-var (
-	errInvalidCapacity    = errors.New("minimum supported values for CPU and memory capacity on PowerVS is 0.25C and 2GB respectively")
-	errInvalidCPUMultiple = errors.New("the CPU cores that can be provisoned on PowerVC is multiples of 0.25")
 )
 
 const (

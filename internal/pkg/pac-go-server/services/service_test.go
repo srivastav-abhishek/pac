@@ -101,7 +101,7 @@ func TestGetService(t *testing.T) {
 				mockKCClient.EXPECT().IsRole(gomock.Any()).Return(false).Times(1)
 			},
 			requestParams: gin.Param{Key: "name", Value: "test-service"},
-			httpStatus:    http.StatusBadRequest,
+			httpStatus:    http.StatusUnauthorized,
 		},
 	}
 	for _, tc := range testcases {

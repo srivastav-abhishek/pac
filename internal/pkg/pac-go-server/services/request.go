@@ -39,7 +39,7 @@ func GetAllRequests(c *gin.Context) {
 	requests, err = dbCon.GetRequestsByUserID(userID, listByType)
 	if err != nil {
 		logger.Error("failed to get requests", zap.String("user id", userID), zap.Error(err))
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
 	logger.Debug("fetched requests", zap.Any("requests", requests))
@@ -56,6 +56,9 @@ func GetRequest(c *gin.Context) {
 	logger.Debug("getting requests", zap.String("request id", id))
 	request, err := dbCon.GetRequestByID(id)
 	if err != nil {
+		if errors.Is(err, utils.ErrResourceNotFound) {
+			c.JSON(http.StatusNotFound, gin.H{"error": fmt.Sprintf("request with id: %s not found", id)})
+		}
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
@@ -71,7 +74,7 @@ func UpdateServiceExpiryRequest(c *gin.Context) {
 
 	if err := c.BindJSON(&request); err != nil {
 		logger.Error("failed to bind request", zap.Error(err))
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
 	logger.Debug("request body", zap.Any("request", request))
@@ -86,8 +89,12 @@ func UpdateServiceExpiryRequest(c *gin.Context) {
 	// verify service with name exist
 	service, err := kubeClient.GetService(serviceName)
 	if err != nil {
+		if errors.Is(err, utils.ErrResourceNotFound) {
+			logger.Error("service not found", zap.String("service name", serviceName))
+			c.JSON(http.StatusNotFound, gin.H{"error": fmt.Sprintf("service with name %s not found", serviceName)})
+		}
 		logger.Error("failed to get service", zap.String("service name", serviceName), zap.Error(err))
-		c.JSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("%v", err)})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("%v", err)})
 		return
 	}
 	logger.Debug("fetched service", zap.Any("service", service))
@@ -103,8 +110,13 @@ func UpdateServiceExpiryRequest(c *gin.Context) {
 	// service shouldn't be extended if catalog already retired
 	catalog, err := kubeClient.GetCatalog(service.Spec.Catalog.Name)
 	if err != nil {
+		if errors.Is(err, utils.ErrResourceNotFound) {
+			logger.Error("catalog does not exists", zap.String("catalog name", service.Spec.Catalog.Name))
+			c.JSON(http.StatusNotFound, gin.H{"error": fmt.Sprintf("%v", err)})
+			return
+		}
 		logger.Error("failed to get catalog", zap.String("catalog name", service.Spec.Catalog.Name), zap.Error(err))
-		c.JSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("%v", err)})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("%v", err)})
 		return
 	}
 
@@ -118,7 +130,7 @@ func UpdateServiceExpiryRequest(c *gin.Context) {
 	req, err := dbCon.GetRequestByServiceName(serviceName)
 	if err != nil {
 		logger.Error("failed to fetch the request", zap.String("service name", serviceName), zap.Error(err))
-		c.JSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("failed to fetch the request from the db, err: %s", err.Error())})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("failed to fetch the request from the db, err: %s", err.Error())})
 		return
 	}
 	logger.Debug("fetched request", zap.Any("request", req))
@@ -144,14 +156,14 @@ func UpdateServiceExpiryRequest(c *gin.Context) {
 	})
 	if err != nil {
 		logger.Error("failed to create request", zap.Error(err))
-		c.JSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("failed to insert the request into the db, err: %s", err.Error())})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("failed to insert the request into the db, err: %s", err.Error())})
 		return
 	}
 
 	event, err := models.NewEvent(userID, originator, models.EventServiceExpiryRequest)
 	if err != nil {
 		logger.Error("failed to create event", zap.Error(err))
-		c.JSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("failed to create event, err: %s", err.Error())})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("failed to create event, err: %s", err.Error())})
 		return
 	}
 
@@ -196,7 +208,7 @@ func NewGroupRequest(c *gin.Context) {
 	grp, err := getGroup(c.Request.Context(), groupID)
 	if err != nil && err != client.ErrorGroupNotFound {
 		logger.Error("failed to get groups", zap.String("group id", groupID), zap.Error(err))
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	} else if err == client.ErrorGroupNotFound {
 		logger.Error("group not found", zap.String("group id", groupID))
@@ -215,7 +227,7 @@ func NewGroupRequest(c *gin.Context) {
 	r, err := dbCon.GetRequestByGroupIDAndUserID(groupID, userID)
 	if err != nil {
 		logger.Error("failed to fetch requests", zap.String("group id", groupID), zap.String("user id", userID), zap.Error(err))
-		c.JSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("failed to fetch the requested record from the db, err: %s", err.Error())})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("failed to fetch the requested record from the db, err: %s", err.Error())})
 		return
 	}
 	for _, request := range r {
@@ -240,14 +252,14 @@ func NewGroupRequest(c *gin.Context) {
 		}})
 	if err != nil {
 		logger.Error("failed to create request", zap.Error(err))
-		c.JSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("failed to insert the request into the db, err: %s", err.Error())})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("failed to insert the request into the db, err: %s", err.Error())})
 		return
 	}
 
 	event, err := models.NewEvent(userID, originator, models.EventGroupJoinRequest)
 	if err != nil {
 		logger.Error("failed to create event", zap.Error(err))
-		c.JSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("failed to create event, err: %s", err.Error())})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("failed to create event, err: %s", err.Error())})
 		return
 	}
 
@@ -291,7 +303,7 @@ func ExitGroup(c *gin.Context) {
 	grp, err := getGroup(c.Request.Context(), groupID)
 	if err != nil && err != client.ErrorGroupNotFound {
 		logger.Error("failed to get groups", zap.String("group id", groupID), zap.Error(err))
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	} else if err == client.ErrorGroupNotFound {
 		logger.Error("group not found", zap.String("group id", groupID))
@@ -310,7 +322,7 @@ func ExitGroup(c *gin.Context) {
 	r, err := dbCon.GetRequestByGroupIDAndUserID(groupID, userID)
 	if err != nil {
 		logger.Error("failed to fetch requests", zap.String("group id", groupID), zap.String("user id", userID), zap.Error(err))
-		c.JSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("failed to fetch the requested record from the db, err: %s", err.Error())})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("failed to fetch the requested record from the db, err: %s", err.Error())})
 		return
 	}
 	logger.Debug("fetched request", zap.Any("request", r))
@@ -340,14 +352,14 @@ func ExitGroup(c *gin.Context) {
 	})
 	if err != nil {
 		logger.Error("failed to create request", zap.Error(err))
-		c.JSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("failed to insert the request into the db, err: %s", err.Error())})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("failed to insert the request into the db, err: %s", err.Error())})
 		return
 	}
 
 	event, err := models.NewEvent(userID, userID, models.EventGroupExitRequest)
 	if err != nil {
 		logger.Error("failed to create event", zap.Error(err))
-		c.JSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("failed to create event, err: %s", err.Error())})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("failed to create event, err: %s", err.Error())})
 		return
 	}
 
@@ -497,6 +509,9 @@ func ApproveRequest(c *gin.Context) {
 	id := c.Param("id")
 	request, err := dbCon.GetRequestByID(id)
 	if err != nil {
+		if errors.Is(err, utils.ErrResourceNotFound) {
+			c.JSON(http.StatusNotFound, gin.H{"error": fmt.Sprintf("request with id: %s not found", id)})
+		}
 		logger.Error("failed to get requests by id", zap.String("id", id), zap.Error(err))
 		c.JSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("failed to fetch the requested record from the db, err: %s", err.Error())})
 		return
@@ -507,7 +522,7 @@ func ApproveRequest(c *gin.Context) {
 		if err := client.NewKeyCloakClient(config, c.Request.Context()).AddUserToGroup(request.UserID, request.GroupAdmission.GroupID); err != nil {
 			logger.Error("failed to add user to group", zap.String("user id", request.UserID),
 				zap.String("group id", request.GroupAdmission.GroupID), zap.Error(err))
-			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 			return
 		}
 		deleteUserFromPreviousGroups(c, request)
@@ -515,7 +530,7 @@ func ApproveRequest(c *gin.Context) {
 		if err := client.NewKeyCloakClient(config, c.Request.Context()).DeleteUserFromGroup(request.UserID, request.GroupAdmission.GroupID); err != nil {
 			logger.Error("failed to remove user from group", zap.String("user id", request.UserID),
 				zap.String("group id", request.GroupAdmission.GroupID), zap.Error(err))
-			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 			return
 		}
 	case models.RequestDeleteUser:
@@ -526,25 +541,30 @@ func ApproveRequest(c *gin.Context) {
 		}
 		if err := dbCon.DeleteTermsAndConditionsByUserID(request.UserID); err != nil {
 			logger.Error("failed to delete tnc status for user", zap.String("user id", request.UserID), zap.Error(err))
-			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 			return
 		}
 	case models.RequestExtendServiceExpiry:
 		if err := kubeClient.UpdateServiceExpiry(request.ServiceExpiry.Name, request.ServiceExpiry.Expiry); err != nil {
+			if errors.Is(err, utils.ErrResourceNotFound) {
+				logger.Error("service does not exists", zap.String("service name", request.ServiceExpiry.Name))
+				c.JSON(http.StatusNotFound, gin.H{"error": fmt.Sprintf("service with name %s does not exists", request.ServiceExpiry.Name)})
+				return
+			}
 			logger.Error("failed to update service", zap.String("service name", request.ServiceExpiry.Name), zap.Error(err))
-			c.JSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("%v", err)})
+			c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("%v", err)})
 			return
 		}
 	}
 	if err := dbCon.UpdateRequestState(id, models.RequestStateApproved); err != nil {
 		logger.Error("failed to update request status in database", zap.String("id", id), zap.Error(err))
-		c.JSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("failed to update the state field in the db, err: %s", err.Error())})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("failed to update the state field in the db, err: %s", err.Error())})
 		return
 	}
 	event, err := models.NewEvent(request.UserID, originator, models.EventTypeRequestApproved)
 	if err != nil {
 		logger.Error("failed to create event", zap.Error(err))
-		c.JSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("failed to create event, err: %s", err.Error())})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("failed to create event, err: %s", err.Error())})
 		return
 	}
 
@@ -587,8 +607,11 @@ func RejectRequest(c *gin.Context) {
 	id := c.Param("id")
 	req, err := dbCon.GetRequestByID(id)
 	if err != nil {
+		if errors.Is(err, utils.ErrResourceNotFound) {
+			c.JSON(http.StatusNotFound, gin.H{"error": fmt.Sprintf("request with id: %s not found", id)})
+		}
 		logger.Error("failed to get requests by id", zap.String("id", id), zap.Error(err))
-		c.JSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("failed to fetch the requested record from the db, err: %s", err.Error())})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("failed to fetch the requested record from the db, err: %s", err.Error())})
 		return
 	}
 	logger.Debug("fetched request", zap.Any("request", req))
@@ -601,13 +624,13 @@ func RejectRequest(c *gin.Context) {
 
 	if err := dbCon.UpdateRequestStateWithComment(id, models.RequestStateRejected, request.Comment); err != nil {
 		logger.Error("failed to update request status in database", zap.String("id", id), zap.Error(err))
-		c.JSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("failed to update the state field in the db, err: %s", err.Error())})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("failed to update the state field in the db, err: %s", err.Error())})
 		return
 	}
 	event, err := models.NewEvent(req.UserID, originator, models.EventTypeRequestRejected)
 	if err != nil {
 		logger.Error("failed to create event", zap.Error(err))
-		c.JSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("failed to create event, err: %s", err.Error())})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("failed to create event, err: %s", err.Error())})
 		return
 	}
 
@@ -629,8 +652,11 @@ func DeleteRequest(c *gin.Context) {
 	id := c.Param("id")
 	request, err := dbCon.GetRequestByID(id)
 	if err != nil {
+		if errors.Is(err, utils.ErrResourceNotFound) {
+			c.JSON(http.StatusNotFound, gin.H{"error": fmt.Sprintf("request with id: %s not found", id)})
+		}
 		logger.Error("failed to get requests by id", zap.String("id", id), zap.Error(err))
-		c.JSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("failed to fetch the requested record from the db, err: %s", err.Error())})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("failed to fetch the requested record from the db, err: %s", err.Error())})
 		return
 	}
 	logger.Debug("fetched request", zap.Any("request", request))
@@ -647,13 +673,13 @@ func DeleteRequest(c *gin.Context) {
 
 	if err := dbCon.DeleteRequest(id); err != nil {
 		logger.Error("failed to delete request in database", zap.String("id", id), zap.Error(err))
-		c.JSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("failed to delete the record from the db, err: %s", err.Error())})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("failed to delete the record from the db, err: %s", err.Error())})
 		return
 	}
 	event, err := models.NewEvent(request.UserID, originator, models.EventTypeRequestDeleted)
 	if err != nil {
 		logger.Error("failed to create event", zap.Error(err))
-		c.JSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("failed to create event, err: %s", err.Error())})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("failed to create event, err: %s", err.Error())})
 		return
 	}
 

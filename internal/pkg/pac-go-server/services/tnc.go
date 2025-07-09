@@ -42,7 +42,7 @@ func AcceptTermsAndConditions(c *gin.Context) {
 		AcceptedAt: &timestamp,
 	}
 	if err := dbCon.AcceptTermsAndConditions(tnc); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": fmt.Sprint("failed to accept terms and conditions: ", err.Error())})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprint("failed to accept terms and conditions: ", err.Error())})
 		return
 	}
 	c.Status(http.StatusCreated)

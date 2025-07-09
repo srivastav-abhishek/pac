@@ -37,7 +37,7 @@ func TestGetAllGroups(t *testing.T) {
 			mockFunc: func() {
 				mockKCClient.EXPECT().GetGroups().Return(nil, errors.New("failed to get groups")).Times(1)
 			},
-			httpStatus: http.StatusBadRequest,
+			httpStatus: http.StatusInternalServerError,
 		},
 	}
 	for _, tc := range testcases {
