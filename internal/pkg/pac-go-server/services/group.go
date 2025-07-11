@@ -19,7 +19,7 @@ func GetAllGroups(c *gin.Context) {
 	groups := []models.Group{}
 	grps, err := getGroups(c.Request.Context())
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
 	var groupIds []string

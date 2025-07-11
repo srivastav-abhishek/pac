@@ -39,7 +39,7 @@ func TestGetQuota(t *testing.T) {
 		{
 			name:          "group not found",
 			mockFunc:      func() {},
-			httpStatus:    http.StatusBadRequest,
+			httpStatus:    http.StatusNotFound,
 			requestParams: gin.Param{Key: "id", Value: "test-group-2"},
 		},
 		{
@@ -114,7 +114,7 @@ func TestCreateQuota(t *testing.T) {
 			mockFunc: func() {
 				mockKCClient.EXPECT().GetGroups().Return(getResource("get-group-info", nil).([]*gocloak.Group), nil).AnyTimes()
 			},
-			httpStatus:    http.StatusBadRequest,
+			httpStatus:    http.StatusNotFound,
 			requestParams: gin.Param{Key: "id", Value: "test-group-2"},
 		},
 		{
@@ -193,7 +193,7 @@ func TestUpdateQuota(t *testing.T) {
 			mockFunc: func() {
 				mockKCClient.EXPECT().GetGroups().Return(getResource("get-group-info", nil).([]*gocloak.Group), nil).AnyTimes()
 			},
-			httpStatus:    http.StatusBadRequest,
+			httpStatus:    http.StatusNotFound,
 			requestParams: gin.Param{Key: "id", Value: "test-group-2"},
 		},
 		{
@@ -254,7 +254,7 @@ func TestDeleteQuota(t *testing.T) {
 			mockFunc: func() {
 				mockKCClient.EXPECT().GetGroups().Return(getResource("get-group-info", nil).([]*gocloak.Group), nil).AnyTimes()
 			},
-			httpStatus:    http.StatusBadRequest,
+			httpStatus:    http.StatusNotFound,
 			requestParams: gin.Param{Key: "id", Value: "test-group-1"},
 		},
 	}

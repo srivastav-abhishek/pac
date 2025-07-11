@@ -106,7 +106,7 @@ func TestGetAllCatalog(t *testing.T) {
 			mockFunc: func() {
 				mockClient.EXPECT().GetCatalogs().Return(getResource("get-all-catalogs", nil).(pac.CatalogList), errors.New("failed to get catalog")).Times(1)
 			},
-			httpStatus: http.StatusBadRequest,
+			httpStatus: http.StatusInternalServerError,
 		},
 	}
 
@@ -152,7 +152,7 @@ func TestGetCatalog(t *testing.T) {
 				mockClient.EXPECT().GetCatalog(gomock.Any()).Return(getResource("get-catalog", nil).(pac.Catalog), errors.New("failed to get catalog")).Times(1)
 			},
 			requestParams: gin.Param{Key: "name", Value: "test-catalog"},
-			httpStatus:    http.StatusBadRequest,
+			httpStatus:    http.StatusInternalServerError,
 		},
 	}
 	for _, tc := range testcases {
@@ -203,7 +203,7 @@ func TestDeleteCatalog(t *testing.T) {
 			},
 			requestContext: formContext(customValues{"userid": "12345"}),
 			requestParams:  gin.Param{Key: "name", Value: "test-catalog"},
-			httpStatus:     http.StatusBadRequest,
+			httpStatus:     http.StatusInternalServerError,
 		},
 		{
 			name: "failed to create event",
@@ -271,7 +271,7 @@ func TestRetireCatalog(t *testing.T) {
 			},
 			requestContext: formContext(customValues{"userid": "12345"}),
 			requestParams:  gin.Param{Key: "name", Value: "test-catalog"},
-			httpStatus:     http.StatusBadRequest,
+			httpStatus:     http.StatusInternalServerError,
 		},
 		{
 			name: "failed to create event",

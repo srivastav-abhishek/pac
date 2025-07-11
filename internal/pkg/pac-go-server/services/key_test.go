@@ -157,7 +157,7 @@ func TestDeleteKey(t *testing.T) {
 				mockDBClient.EXPECT().GetKeyByID(gomock.Any()).Return(getResource("get-key-by-id", nil), nil).Times(1)
 				mockKCClient.EXPECT().IsRole(gomock.Any()).Return(false).Times(1)
 			},
-			httpStatus: http.StatusInternalServerError,
+			httpStatus: http.StatusUnauthorized,
 		},
 	}
 	for _, tc := range testcases {

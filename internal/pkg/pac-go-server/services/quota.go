@@ -20,14 +20,18 @@ func GetQuota(c *gin.Context) {
 	logger := log.GetLogger()
 	gid := c.Param("id")
 	if err := checkGroupExists(c, gid); err != nil {
+		if errors.Is(err, client.ErrorGroupNotFound) {
+			logger.Error("group does not exists", zap.String("group id", gid))
+			c.JSON(http.StatusNotFound, gin.H{"error": fmt.Sprintf("the group ID %s does not exist", gid)})
+		}
 		logger.Error("cannot find group by ID", zap.String("id", gid), zap.Error(err))
-		c.JSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("The group ID %s does not exist.", gid)})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("error occured while fetching group with id %s, err: %v", gid, err)})
 		return
 	}
 	quotaDb, err := dbCon.GetQuotaForGroupID(gid)
 	if err != nil && err != mongo.ErrNoDocuments {
 		logger.Error("error occured while checking quota", zap.Error(err))
-		c.JSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("An error occured while retriving quota, contact PAC support. Error: %s", err.Error())})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("An error occured while retriving quota, contact PAC support. Error: %s", err.Error())})
 		return
 	}
 	if quotaDb == nil {
@@ -43,14 +47,18 @@ func CreateQuota(c *gin.Context) {
 	gid := c.Param("id")
 
 	if err := checkGroupExists(c, gid); err != nil {
-		logger.Error("cannot find group by ID", zap.String("id", gid))
-		c.JSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("The group ID %s does not exist.", gid)})
+		if errors.Is(err, client.ErrorGroupNotFound) {
+			logger.Error("group does not exists", zap.String("group id", gid))
+			c.JSON(http.StatusNotFound, gin.H{"error": fmt.Sprintf("The group ID %s does not exist.", gid)})
+		}
+		logger.Error("cannot find group by ID", zap.String("id", gid), zap.Error(err))
+		c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("error occured while fetching group with id %s, err: %s", gid, err)})
 		return
 	}
 
 	if err := c.BindJSON(&quota); err != nil {
 		logger.Error("error while creating quota for group", zap.String("id", gid), zap.Error(err))
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
 
@@ -81,7 +89,7 @@ func CreateQuota(c *gin.Context) {
 		GroupID:  gid,
 		Capacity: quota.Capacity,
 	}); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("Failed to insert the quota into the database, Error: %s", err.Error())})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("Failed to insert the quota into the database, Error: %s", err.Error())})
 		return
 	}
 
@@ -95,14 +103,18 @@ func UpdateQuota(c *gin.Context) {
 	gid := c.Param("id")
 
 	if err := checkGroupExists(c, gid); err != nil {
-		logger.Error("cannot find group by ID", zap.String("id", gid))
-		c.JSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("The group ID %s does not exist.", gid)})
+		if errors.Is(err, client.ErrorGroupNotFound) {
+			logger.Error("group does not exists", zap.String("group id", gid))
+			c.JSON(http.StatusNotFound, gin.H{"error": fmt.Sprintf("The group ID %s does not exist.", gid)})
+		}
+		logger.Error("cannot find group by ID", zap.String("id", gid), zap.Error(err))
+		c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("error occured while fetching group with id %s, err: %s", gid, err)})
 		return
 	}
 
 	if err := c.BindJSON(&quota); err != nil {
 		logger.Error("error while updating quota", zap.String("groupID", gid), zap.Error(err))
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
 
@@ -133,7 +145,7 @@ func UpdateQuota(c *gin.Context) {
 		GroupID:  gid,
 		Capacity: quota.Capacity,
 	}); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("Failed to insert the quota into the database, Error: %s", err.Error())})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("Failed to insert the quota into the database, Error: %s", err.Error())})
 		return
 	}
 
@@ -148,14 +160,18 @@ func DeleteQuota(c *gin.Context) {
 
 	// Check if the group ID is valid, else return 404
 	if err := checkGroupExists(c, gid); err != nil {
-		logger.Error("cannot find group by ID", zap.String("id", gid))
-		c.JSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("The group ID %s does not exist.", gid)})
+		if errors.Is(err, client.ErrorGroupNotFound) {
+			logger.Error("group does not exists", zap.String("group id", gid))
+			c.JSON(http.StatusNotFound, gin.H{"error": fmt.Sprintf("The group ID %s does not exist.", gid)})
+		}
+		logger.Error("cannot find group by ID", zap.String("id", gid), zap.Error(err))
+		c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("error occured while fetching group with id %s, err: %s", gid, err)})
 		return
 	}
 
 	if err := dbCon.DeleteQuota(gid); err != nil {
 		logger.Error("quota could not be deleted", zap.Error(err))
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Error while deleting quota"})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Error while deleting quota"})
 		return
 	}
 

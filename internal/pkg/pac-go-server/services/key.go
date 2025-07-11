@@ -1,6 +1,7 @@
 package services
 
 import (
+	"errors"
 	"fmt"
 	"net/http"
 
@@ -40,6 +41,10 @@ func GetKey(c *gin.Context) {
 	id := c.Param("id")
 	key, err := dbCon.GetKeyByID(id)
 	if err != nil {
+		if errors.Is(err, utils.ErrResourceNotFound) {
+			c.JSON(http.StatusNotFound, gin.H{"error": fmt.Sprintf("key with id %s not found", id)})
+			return
+		}
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
@@ -85,7 +90,7 @@ func CreateKey(c *gin.Context) {
 
 	// Insert the request into the database
 	if err := dbCon.CreateKey(&key); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("failed to insert the key into the db, err: %s", err.Error())})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("failed to insert the key into the db, err: %s", err.Error())})
 		return
 	}
 	c.Status(http.StatusCreated)
@@ -94,6 +99,9 @@ func CreateKey(c *gin.Context) {
 func DeleteKeyHandler(c *gin.Context) {
 	err := deleteKey(c, c.Param("id"))
 	if err != nil {
+		if errors.Is(err, utils.ErrNotAuthorized) {
+			c.JSON(http.StatusUnauthorized, gin.H{"error": fmt.Sprintf("not authorized to perform this action: %v", err)})
+		}
 		c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("%v", err)})
 	}
 	c.Status(http.StatusNoContent)
@@ -108,7 +116,7 @@ func deleteKey(c *gin.Context, id string) error {
 	}
 
 	if key.UserID != c.Request.Context().Value("userid").(string) && !kc.IsRole(utils.ManagerRole) {
-		return fmt.Errorf("%s", "you do not have permission to delete this key.")
+		return utils.ErrNotAuthorized
 	}
 	if err := dbCon.DeleteKey(id); err != nil {
 		return fmt.Errorf("failed to delete the key from the db, err: %w", err)

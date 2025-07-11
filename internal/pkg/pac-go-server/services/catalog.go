@@ -22,7 +22,7 @@ func GetAllCatalogs(c *gin.Context) {
 	catalogs, err := kubeClient.GetCatalogs()
 	if err != nil {
 		logger.Error("failed to get catalogs", zap.Error(err))
-		c.JSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("%v", err)})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("%v", err)})
 		return
 	}
 	catalogsItems := convertToCatalogs(catalogs)
@@ -41,8 +41,13 @@ func GetCatalog(c *gin.Context) {
 
 	catalog, err := kubeClient.GetCatalog(catalogName)
 	if err != nil {
+		if errors.Is(err, utils.ErrResourceNotFound) {
+			logger.Error("catalog does not exists", zap.String("catalog name", catalogName))
+			c.JSON(http.StatusNotFound, gin.H{"error": fmt.Sprintf("catalog with name %s does not exists", catalogName)})
+			return
+		}
 		logger.Error("failed to get catalog", zap.String("catalog name", catalogName), zap.Error(err))
-		c.JSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("%v", err)})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("%v", err)})
 		return
 	}
 	catalogItem := convertToCatalog(catalog)
@@ -56,7 +61,7 @@ func CreateCatalog(c *gin.Context) {
 	catalog := models.Catalog{}
 	if err := c.BindJSON(&catalog); err != nil {
 		logger.Error("failed to bind request", zap.Error(err))
-		c.JSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("failed to bind request, Error: %v", err.Error())})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("failed to bind request, Error: %v", err.Error())})
 		return
 	}
 	logger.Debug("create catalog request", zap.Any("request", catalog))
@@ -66,15 +71,20 @@ func CreateCatalog(c *gin.Context) {
 		return
 	}
 	if err := kubeClient.CreateCatalog(createCatalogObject(catalog)); err != nil {
+		if errors.Is(err, utils.ErrResourceAlreadyExists) {
+			logger.Error("catalog already exists", zap.String("catalog name", catalog.Name))
+			c.JSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("catalog with name %s already exists", catalog.Name)})
+			return
+		}
 		logger.Error("failed to create catalog", zap.Error(err))
-		c.JSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("%v", err)})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("%v", err)})
 		return
 	}
 
 	event, err := models.NewEvent(originator, originator, models.EventCatalogCreate)
 	if err != nil {
 		logger.Error("failed to create event", zap.Error(err))
-		c.JSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("%v", err)})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("%v", err)})
 		return
 	}
 
@@ -101,14 +111,19 @@ func DeleteCatalog(c *gin.Context) {
 	}
 
 	if err := kubeClient.DeleteCatalog(catalogName); err != nil {
+		if errors.Is(err, utils.ErrResourceNotFound) {
+			logger.Error("catalog does not exists", zap.String("catalog name", catalogName))
+			c.JSON(http.StatusNotFound, gin.H{"error": fmt.Sprintf("catalog with name %s does not exists", catalogName)})
+			return
+		}
 		logger.Error("failed to delete catalog", zap.String("catalog name", catalogName), zap.Error(err))
-		c.JSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("%v", err)})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("%v", err)})
 		return
 	}
 	event, err := models.NewEvent(originator, originator, models.EventCatalogDelete)
 	if err != nil {
 		logger.Error("failed to create event", zap.Error(err))
-		c.JSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("%v", err)})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("%v", err)})
 		return
 	}
 
@@ -134,8 +149,13 @@ func RetireCatalog(c *gin.Context) {
 	}
 
 	if err := kubeClient.RetireCatalog(catalogName); err != nil {
+		if errors.Is(err, utils.ErrResourceNotFound) {
+			logger.Error("catalog does not exists", zap.String("catalog name", catalogName))
+			c.JSON(http.StatusNotFound, gin.H{"error": fmt.Sprintf("catalog with name %s does not exists", catalogName)})
+			return
+		}
 		logger.Error("failed to retire catalog", zap.String("catalog name", catalogName), zap.Error(err))
-		c.JSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("%v", err)})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("%v", err)})
 		return
 	}
 	event, err := models.NewEvent(originator, originator, models.EventCatalogRetire)
