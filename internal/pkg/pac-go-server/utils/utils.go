@@ -9,6 +9,9 @@ import (
 
 const (
 	ManagerRole = "manager"
+
+	// DefaultExpirationDays - default expiration days set for Catalog
+	DefaultExpirationDays = 5
 )
 
 func CastStrToFloat(val string) (float64, error) {

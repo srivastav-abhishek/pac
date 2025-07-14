@@ -64,12 +64,20 @@ func CreateCatalog(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("failed to bind request, Error: %v", err.Error())})
 		return
 	}
+
 	logger.Debug("create catalog request", zap.Any("request", catalog))
 	if err := validateCreateCatalogParams(catalog); len(err) > 0 {
 		logger.Error("error in create catalog validation", zap.Errors("errors", err))
 		c.JSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("%v", err)})
 		return
 	}
+
+	// if Expiry is not set, use Default value
+	if catalog.Expiry == 0 {
+		logger.Info("Catalog expiry is set to 0, which is invalid, using default expiry", zap.String("catalogName", catalog.Name), zap.Int("defaultExpiry", utils.DefaultExpirationDays))
+		catalog.Expiry = utils.DefaultExpirationDays
+	}
+
 	if err := kubeClient.CreateCatalog(createCatalogObject(catalog)); err != nil {
 		if errors.Is(err, utils.ErrResourceAlreadyExists) {
 			logger.Error("catalog already exists", zap.String("catalog name", catalog.Name))
@@ -238,9 +246,6 @@ func validateCreateCatalogParams(catalog models.Catalog) []error {
 	}
 	if catalog.Capacity.Memory == 0 {
 		errs = append(errs, errors.New("catalog memory capacity should be set"))
-	}
-	if catalog.Expiry == 0 {
-		errs = append(errs, errors.New("catalog expiry should be set"))
 	}
 	if _, err := url.ParseRequestURI(catalog.ImageThumbnailReference); err != nil {
 		errs = append(errs, errors.New("catalog image not valid"))
