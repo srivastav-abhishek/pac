@@ -34,8 +34,9 @@ func CreateRouter() *gin.Engine {
 	router.GET("/ping", func(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{"message": "pong"})
 	})
-
-	router.GET("/docs/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
+	if os.Getenv("ENABLE_SWAGGER") == "true" {
+		router.GET("/docs/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
+	}
 
 	authorized := router.Group("/api/v1")
 	authorized.Use(ginkeycloak.Auth(ginkeycloak.AuthCheck(), ginkeycloak.KeycloakConfig{
